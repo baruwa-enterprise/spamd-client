@@ -1,10 +1,17 @@
+// Spamc - Golang spamc client
+// Copyright (C) 2018 Andrew Colin Kissa <andrew@datopdog.io>
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this file,
+// You can obtain one at http://mozilla.org/MPL/2.0/.
+// Package log
 package log
 
 import (
 	"os"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/baruwa-enterprise/spamc/config"
+	"github.com/sirupsen/logrus"
 )
 
 // Logger defines a set of methods for writing application logs. Derived from and
@@ -42,17 +49,14 @@ func init() {
 	defaultLogger = newLogrusLogger(config.Config())
 }
 
-
 func NewLogger(cfg config.Provider) *logrus.Logger {
 	return newLogrusLogger(cfg)
 }
 
-
-
 func newLogrusLogger(cfg config.Provider) *logrus.Logger {
 
 	l := logrus.New()
-	
+
 	if cfg.GetBool("json_logs") {
 		l.Formatter = new(logrus.JSONFormatter)
 	}
@@ -68,7 +72,7 @@ func newLogrusLogger(cfg config.Provider) *logrus.Logger {
 	default:
 		l.Level = logrus.DebugLevel
 	}
-	
+
 	return l
 }
 
