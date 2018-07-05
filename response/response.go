@@ -9,6 +9,8 @@ package response
 
 import (
 	"net/textproto"
+
+	"github.com/baruwa-enterprise/spamc/request"
 )
 
 const (
@@ -107,9 +109,38 @@ func (s StatusCode) Error() (r string) {
 
 // A Response represents a server response from a Spamc server.
 type Response struct {
-	StatusCode StatusCode
-	StatusMsg  string
-	Version    string
-	Headers    textproto.MIMEHeader
-	Body       []byte
+	RequestMethod request.Method
+	StatusCode    StatusCode
+	StatusMsg     string
+	Version       string
+	Score         float64
+	BaseScore     float64
+	IsSpam        bool
+	Headers       textproto.MIMEHeader
+	Msg           *Msg
+	Rules         []map[string]string
+}
+
+// NewResponse returns a new Response
+func NewResponse(m request.Method) *Response {
+	return &Response{
+		RequestMethod: m,
+		Headers:       make(textproto.MIMEHeader),
+		Msg:           NewMsg(),
+		Rules:         make([]map[string]string, 1),
+	}
+}
+
+// A Msg represents a message response from a Spamc server.
+type Msg struct {
+	Header textproto.MIMEHeader
+	Body   []byte
+}
+
+// NewMsg returns a new Msg
+func NewMsg() *Msg {
+	return &Msg{
+		Header: make(textproto.MIMEHeader),
+		Body:   make([]byte, 1),
+	}
 }

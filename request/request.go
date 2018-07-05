@@ -10,6 +10,7 @@ package request
 import (
 	"fmt"
 	"net/textproto"
+	"strconv"
 
 	"github.com/baruwa-enterprise/spamc/header"
 )
@@ -99,6 +100,10 @@ func (m Method) UsesHeader(h header.Header) (b bool) {
 }
 
 // A TellAction represents a Tell Action
+// - Learn
+// - Forget
+// - Report
+// - Revoke
 type TellAction int
 
 // A MsgType represents a Message type
@@ -108,6 +113,7 @@ type MsgType int
 
 func (m MsgType) String() (s string) {
 	n := [...]string{
+		"",
 		"ham",
 		"spam",
 	}
@@ -182,19 +188,19 @@ func (r *Request) Request() (rs string) {
 
 // NewRequest creates and returns a new Request
 func NewRequest(m Method, b []byte, u string, c bool) (r *Request, err error) {
-	h := make(textproto.MIMEHeader)
+	r = &Request{
+		Method:  m,
+		Headers: make(textproto.MIMEHeader),
+		Body:    b,
+	}
 	if u != "" && m.UsesHeader(header.User) {
-		h.Set(header.User.String(), u)
+		r.Headers.Set(header.User.String(), u)
 	}
 	if c && m.UsesHeader(header.Compress) {
-		h.Set(header.Compress.String(), "1")
+		r.Headers.Set(header.Compress.String(), "1")
 	}
 	if b != nil && len(b) > 0 {
-		h.Set(header.ContentLength.String(), string(len(b)+2))
+		r.Headers.Set(header.ContentLength.String(), strconv.Itoa(len(b)+2))
 	}
-	return &Request{
-		Method:  m,
-		Headers: h,
-		Body:    b,
-	}, nil
+	return
 }
