@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/textproto"
 	"os"
@@ -193,7 +192,6 @@ func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
 	// Send the headers
 	// Content-length needs to be send first
 	if v := rq.Headers.Get("Content-length"); v != "" {
-		log.Printf("Content-length: %s\n", v)
 		tc.PrintfLine("Content-length: %s", v)
 	}
 	for h, v := range rq.Headers {
@@ -201,7 +199,6 @@ func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
 			continue
 		}
 		for _, vi := range v {
-			log.Printf("%s: %s\n", h, vi)
 			tc.PrintfLine("%s: %s", h, vi)
 		}
 	}
