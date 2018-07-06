@@ -44,7 +44,8 @@ func d(r *response.Response) {
 
 func main() {
 	// c, e := spamc.NewClient("unix", "/Users/andrew/tmp/spamd.sock", "", false)
-	c, e := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", false)
+	c, e := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+	// c, e := spamc.NewClient("tcp4", "192.168.1.12:783", "Debian-exim", true)
 	if e != nil {
 		log.Fatal(e)
 	}

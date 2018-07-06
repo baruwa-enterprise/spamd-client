@@ -8,6 +8,8 @@
 package request
 
 import (
+	"bytes"
+	"compress/zlib"
 	"fmt"
 	"net/textproto"
 	"strconv"
@@ -191,16 +193,28 @@ func NewRequest(m Method, b []byte, u string, c bool) (r *Request, err error) {
 	r = &Request{
 		Method:  m,
 		Headers: make(textproto.MIMEHeader),
-		Body:    b,
 	}
+
 	if u != "" && m.UsesHeader(header.User) {
 		r.Headers.Set(header.User.String(), u)
 	}
+
 	if c && m.UsesHeader(header.Compress) {
-		r.Headers.Set(header.Compress.String(), "1")
+		r.Headers.Set(header.Compress.String(), "zlib")
+		var buf bytes.Buffer
+		w := zlib.NewWriter(&buf)
+		_, err = w.Write(b)
+		if err != nil {
+			return
+		}
+		w.Close()
+		r.Body = buf.Bytes()
+	} else {
+		r.Body = b
 	}
-	if b != nil && len(b) > 0 {
-		r.Headers.Set(header.ContentLength.String(), strconv.Itoa(len(b)+2))
+
+	if r.Body != nil && len(r.Body) > 0 {
+		r.Headers.Set(header.ContentLength.String(), strconv.Itoa(len(r.Body)+2))
 	}
 	return
 }

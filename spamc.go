@@ -30,7 +30,7 @@ var (
 	ruleRe       = regexp.MustCompile(`^\s*(?P<score>-?[0-9]+\.?[0-9]?)\s+(?P<name>[A-Z0-9\_]+)\s+(?P<desc>\w+.*)$`)
 )
 
-// A Client represents a client connection to a Spamc server.
+// A Client represents a Spamc client.
 type Client struct {
 	network        string
 	address        string
@@ -38,7 +38,7 @@ type Client struct {
 	useCompression bool
 }
 
-// NewClient returns a new a client connection to a Spamc server.
+// NewClient returns a new Spamc client.
 func NewClient(network, address, user string, useCompression bool) (c *Client, err error) {
 	if network == "" && address == "" {
 		network = "unix"
@@ -193,13 +193,15 @@ func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
 	// Send the headers
 	// Content-length needs to be send first
 	if v := rq.Headers.Get("Content-length"); v != "" {
-		tc.PrintfLine("Content-Length: %s", v)
+		log.Printf("Content-length: %s\n", v)
+		tc.PrintfLine("Content-length: %s", v)
 	}
 	for h, v := range rq.Headers {
 		if h == "Content-Length" {
 			continue
 		}
 		for _, vi := range v {
+			log.Printf("%s: %s\n", h, vi)
 			tc.PrintfLine("%s: %s", h, vi)
 		}
 	}
@@ -261,13 +263,11 @@ func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
 	}
 
 	// Read the headers
-	// var mh textproto.MIMEHeader
 	rs.Headers, err = tc.ReadMIMEHeader()
 	if err != nil {
 		return
 	}
-	log.Printf("xxxxxx => Headers => %v\n", rs.Headers)
-	// rs.Headers = mh
+	// log.Printf("xxxxxx => Headers => %v\n", rs.Headers)
 
 	if rq.Method == request.Tell {
 		return
@@ -301,7 +301,7 @@ func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
 			err = fmt.Errorf("Invalid Server Response: %s", err)
 			return
 		}
-		// HEADERS, PROCESS, TELL
+		// HEADERS, PROCESS
 		if rq.Method == request.Headers || rq.Method == request.Process || rq.Method == request.Tell {
 			rs.Msg.Header, err = tc.ReadMIMEHeader()
 			if err != nil {
@@ -310,7 +310,6 @@ func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
 			s = false
 			f = false
 			for {
-				// lineb, err = tc.ReadLineBytes()
 				lineb, err = tc.R.ReadBytes('\n')
 				if err != nil {
 					if err == io.EOF {
@@ -411,12 +410,3 @@ func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
 	}
 	return
 }
-
-// func checkerr(e error) (err error) {
-// 	if e != nil {
-// 		if e != io.EOF {
-// 			err = e
-// 		}
-// 	}
-// 	return
-// }
