@@ -21,7 +21,7 @@ const (
 type Header int
 
 func (h Header) String() (s string) {
-	names := [...]string{
+	n := [...]string{
 		"Compress",
 		"User",
 		"Content-length",
@@ -32,6 +32,6 @@ func (h Header) String() (s string) {
 	if h < Compress || h > Set {
 		return
 	}
-	s = names[h]
+	s = n[h]
 	return
 }

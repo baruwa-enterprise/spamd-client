@@ -43,12 +43,13 @@ func d(r *response.Response) {
 }
 
 func main() {
+	ch := make(chan bool)
 	// c, e := spamc.NewClient("unix", "/Users/andrew/tmp/spamd.sock", "", false)
-	c, e := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+	// c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
 	// c, e := spamc.NewClient("tcp4", "192.168.1.12:783", "Debian-exim", true)
-	if e != nil {
-		log.Fatal(e)
-	}
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 	m := []byte(`Date: Mon, 23 Jun 2015 11:40:36 -0400
 From: Gopher <from@example.com>
 To: Another Gopher <to@example.com>
@@ -62,44 +63,91 @@ My Workd
 
 ++++++++++++++
 `)
-	var s bool
-	s, e = c.Ping()
-	if e != nil {
-		log.Fatal(e)
+	// var s bool
+	// s, err = c.Ping()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// log.Println("Pong =>", s)
+	// log.Println("===================================")
+	go func(m []byte) {
+		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+		if err != nil {
+			log.Fatal(err)
+		}
+		r, e := c.Check(m)
+		if e != nil {
+			log.Fatal(e)
+		}
+		d(r)
+		ch <- true
+	}(m)
+	go func(m []byte) {
+		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+		if err != nil {
+			log.Fatal(err)
+		}
+		r, e := c.Headers(m)
+		if e != nil {
+			log.Fatal(e)
+		}
+		d(r)
+		ch <- true
+	}(m)
+	go func(m []byte) {
+		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+		if err != nil {
+			log.Fatal(err)
+		}
+		r, e := c.Process(m)
+		if e != nil {
+			log.Fatal(e)
+		}
+		d(r)
+		ch <- true
+	}(m)
+	go func(m []byte) {
+		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+		if err != nil {
+			log.Fatal(err)
+		}
+		r, e := c.Report(m)
+		if e != nil {
+			log.Fatal(e)
+		}
+		d(r)
+		ch <- true
+	}(m)
+	go func(m []byte) {
+		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+		if err != nil {
+			log.Fatal(err)
+		}
+		r, e := c.ReportIfSpam(m)
+		if e != nil {
+			log.Fatal(e)
+		}
+		d(r)
+		ch <- true
+	}(m)
+	go func(m []byte) {
+		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+		if err != nil {
+			log.Fatal(err)
+		}
+		r, e := c.Symbols(m)
+		if e != nil {
+			log.Fatal(e)
+		}
+		d(r)
+		ch <- true
+	}(m)
+	<-ch
+	c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+	if err != nil {
+		log.Fatal(err)
 	}
-	log.Println("Pong =>", s)
-	log.Println("===================================")
-	r, e := c.Check(m)
-	if e != nil {
-		log.Fatal(e)
-	}
-	d(r)
-	r, e = c.Headers(m)
-	if e != nil {
-		log.Fatal(e)
-	}
-	d(r)
-	r, e = c.Process(m)
-	if e != nil {
-		log.Fatal(e)
-	}
-	d(r)
-	r, e = c.Report(m)
-	if e != nil {
-		log.Fatal(e)
-	}
-	d(r)
-	r, e = c.ReportIfSpam(m)
-	if e != nil {
-		log.Fatal(e)
-	}
-	d(r)
-	r, e = c.Symbols(m)
-	if e != nil {
-		log.Fatal(e)
-	}
-	d(r)
-	r, e = c.Tell(m, request.Ham, request.LearnAction)
+	r, e := c.Tell(m, request.Ham, request.LearnAction)
 	if e != nil {
 		log.Fatal(e)
 	}

@@ -8,17 +8,7 @@
 package request
 
 import (
-	"bytes"
-	"compress/zlib"
-	"fmt"
-	"net/textproto"
-	"strconv"
-
 	"github.com/baruwa-enterprise/spamc/header"
-)
-
-const (
-	ClientVersion = "1.5"
 )
 
 const (
@@ -45,20 +35,6 @@ const (
 	NoneType MsgType = iota
 	Ham
 	Spam
-)
-
-var (
-	methods = []Method{
-		Check,
-		Headers,
-		Ping,
-		Process,
-		Report,
-		ReportIfSpam,
-		Skip,
-		Symbols,
-		Tell,
-	}
 )
 
 // A Method represents a Spamc request method
@@ -123,98 +99,5 @@ func (m MsgType) String() (s string) {
 		return
 	}
 	s = n[m]
-	return
-}
-
-// A Request represents a client request to a Spamc server.
-type Request struct {
-	Method    Method
-	Headers   textproto.MIMEHeader
-	Body      []byte
-	Action    TellAction
-	LearnType MsgType
-}
-
-// SetHeader sets the request header
-func (r *Request) SetHeader(h header.Header, v string) {
-	if r.Method.UsesHeader(h) {
-		r.Headers.Set(h.String(), v)
-	}
-}
-
-// SetLearnType sets the learn type
-func (r *Request) SetLearnType(t MsgType) (err error) {
-	if t == NoneType {
-		err = fmt.Errorf("Set the correct learn type")
-		return
-	}
-	r.LearnType = t
-	return
-}
-
-// SetAction sets the action
-func (r *Request) SetAction(a TellAction) (err error) {
-	switch r.Method {
-	case Tell:
-		if r.LearnType == NoneType {
-			err = fmt.Errorf("Call SetLearnType() before calling SetAction")
-			return
-		}
-		r.Action = a
-	default:
-		err = fmt.Errorf("Method: %s does not support actions", r.Method)
-		return
-	}
-	// Set the headers
-	switch r.Action {
-	case LearnAction:
-		r.SetHeader(header.MessageClass, r.LearnType.String())
-		r.SetHeader(header.Set, "local")
-	case ForgetAction:
-		r.SetHeader(header.Remove, "local")
-	case ReportAction:
-		r.SetHeader(header.MessageClass, Spam.String())
-		r.SetHeader(header.Set, "local, remote")
-	case RevokeAction:
-		r.SetHeader(header.MessageClass, Ham.String())
-		r.SetHeader(header.Remove, "remote")
-		r.SetHeader(header.Set, "local")
-	}
-	return
-}
-
-// Request returns the request line
-func (r *Request) Request() (rs string) {
-	return fmt.Sprintf("%s SPAMC/%s", r.Method, ClientVersion)
-}
-
-// NewRequest creates and returns a new Request
-func NewRequest(m Method, b []byte, u string, c bool) (r *Request, err error) {
-	r = &Request{
-		Method:  m,
-		Headers: make(textproto.MIMEHeader),
-	}
-
-	if u != "" && m.UsesHeader(header.User) {
-		r.Headers.Set(header.User.String(), u)
-	}
-
-	if c && m.UsesHeader(header.Compress) {
-		r.Headers.Set(header.Compress.String(), "zlib")
-		var buf bytes.Buffer
-		w := zlib.NewWriter(&buf)
-		_, err = w.Write(b)
-		if err != nil {
-			return
-		}
-		w.Close()
-		r.Body = buf.Bytes()
-	} else {
-		r.Body = b
-	}
-
-	if r.Body != nil && len(r.Body) > 0 {
-		r.Headers.Set(header.ContentLength.String(), strconv.Itoa(len(r.Body)+2))
-	}
 	return
 }

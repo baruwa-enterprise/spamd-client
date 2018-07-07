@@ -9,6 +9,7 @@ package spamc
 
 import (
 	"bytes"
+	"compress/zlib"
 	"fmt"
 	"io"
 	"net"
@@ -18,12 +19,16 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/baruwa-enterprise/spamc/header"
 	"github.com/baruwa-enterprise/spamc/request"
 	"github.com/baruwa-enterprise/spamc/response"
 )
 
+const (
+	ClientVersion = "1.5"
+)
+
 var (
-	rq           *request.Request
 	responseRe   = regexp.MustCompile(`^SPAMD/(?P<version>[0-9\.]+)\s(?P<code>[0-9]+)\s(?P<message>[0-9A-Z_]+)$`)
 	spamHeaderRe = regexp.MustCompile(`^(?P<isspam>True|False|Yes|No)\s;\s(?P<score>\-?[0-9\.]+)\s\/\s(?P<basescore>[0-9\.]+)`)
 	ruleRe       = regexp.MustCompile(`^\s*(?P<score>-?[0-9]+\.?[0-9]?)\s+(?P<name>[A-Z0-9\_]+)\s+(?P<desc>\w+.*)$`)
@@ -77,14 +82,14 @@ func (c *Client) DisableCompression() {
 
 // Check requests the SPAMD service to check a message with a CHECK request.
 func (c *Client) Check(m []byte) (rs *response.Response, err error) {
-	rs, err = c.makereq(request.Check, m)
+	rs, err = c.cmd(request.Check, request.NoAction, request.NoneType, m)
 	return
 }
 
 // Headers requests the SPAMD service to check a message with a
 // HEADERS request.
 func (c *Client) Headers(m []byte) (rs *response.Response, err error) {
-	rs, err = c.makereq(request.Headers, m)
+	rs, err = c.cmd(request.Headers, request.NoAction, request.NoneType, m)
 	return
 }
 
@@ -92,7 +97,7 @@ func (c *Client) Headers(m []byte) (rs *response.Response, err error) {
 // a response if the service is alive.
 func (c *Client) Ping() (s bool, err error) {
 	var rs *response.Response
-	rs, err = c.makereq(request.Ping, nil)
+	rs, err = c.cmd(request.Ping, request.NoAction, request.NoneType, nil)
 	s = rs.StatusCode == response.ExOK
 	return
 }
@@ -100,50 +105,38 @@ func (c *Client) Ping() (s bool, err error) {
 // Process requests the SPAMD service to check a message with a
 // PROCESS request.
 func (c *Client) Process(m []byte) (rs *response.Response, err error) {
-	rs, err = c.makereq(request.Process, m)
+	rs, err = c.cmd(request.Process, request.NoAction, request.NoneType, m)
 	return
 }
 
 // Report requests the SPAMD service to check a message with a
 // REPORT request.
 func (c *Client) Report(m []byte) (rs *response.Response, err error) {
-	rs, err = c.makereq(request.Report, m)
+	rs, err = c.cmd(request.Report, request.NoAction, request.NoneType, m)
 	return
 }
 
 // ReportIfSpam requests the SPAMD service to check a message with a
 // REPORT_IFSPAM request.
 func (c *Client) ReportIfSpam(m []byte) (rs *response.Response, err error) {
-	rs, err = c.makereq(request.ReportIfSpam, m)
+	rs, err = c.cmd(request.ReportIfSpam, request.NoAction, request.NoneType, m)
 	return
 }
 
 // Symbols requests the SPAMD service to check a message with a
 // SYMBOLS request.
 func (c *Client) Symbols(m []byte) (rs *response.Response, err error) {
-	rs, err = c.makereq(request.Symbols, m)
+	rs, err = c.cmd(request.Symbols, request.NoAction, request.NoneType, m)
 	return
 }
 
 // Tell instructs the SPAMD service to to mark the message
 func (c *Client) Tell(m []byte, l request.MsgType, a request.TellAction) (rs *response.Response, err error) {
-	rq, err = request.NewRequest(request.Tell, m, c.user, c.useCompression)
-	if err != nil {
+	if l == request.NoneType {
+		err = fmt.Errorf("Set the correct learn type")
 		return
 	}
-
-	// Set learn as (ham, spam)
-	err = rq.SetLearnType(l)
-	if err != nil {
-		return
-	}
-
-	// Set tell action (learn, forget, report, revoke)
-	err = rq.SetAction(a)
-	if err != nil {
-		return
-	}
-	rs, err = c.cmd(rq)
+	rs, err = c.cmd(request.Tell, a, l, m)
 	return
 }
 
@@ -159,16 +152,7 @@ func (c *Client) Revoke(m []byte) (rs *response.Response, err error) {
 	return
 }
 
-func (c *Client) makereq(rt request.Method, m []byte) (rs *response.Response, err error) {
-	rq, err = request.NewRequest(rt, m, c.user, c.useCompression)
-	if err != nil {
-		return
-	}
-	rs, err = c.cmd(rq)
-	return
-}
-
-func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
+func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType, msg []byte) (rs *response.Response, err error) {
 	var s, f bool
 	var line string
 	var lineb []byte
@@ -187,29 +171,60 @@ func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
 	// Send the request
 	id := tc.Next()
 	tc.StartRequest(id)
-	tc.PrintfLine(rq.Request())
+	tc.PrintfLine("%s SPAMC/%s", rq, ClientVersion)
 
 	// Send the headers
 	// Content-length needs to be send first
-	if v := rq.Headers.Get("Content-length"); v != "" {
-		tc.PrintfLine("Content-length: %s", v)
+	if msg != nil {
+		tc.PrintfLine("Content-length: %s", strconv.Itoa(len(msg)+2))
 	}
-	for h, v := range rq.Headers {
-		if h == "Content-Length" {
-			continue
-		}
-		for _, vi := range v {
-			tc.PrintfLine("%s: %s", h, vi)
+	// Compress
+	if c.useCompression && rq.UsesHeader(header.Compress) {
+		tc.PrintfLine("Compress: %s", "zlib")
+	}
+	// User
+	if c.user != "" && rq.UsesHeader(header.User) {
+		tc.PrintfLine("User: %s", c.user)
+	}
+	// Tell headers
+	if rq == request.Tell {
+		switch a {
+		case request.LearnAction:
+			tc.PrintfLine("%: %s", header.MessageClass, l)
+			tc.PrintfLine("%: %s", header.Set, "local")
+		case request.ForgetAction:
+			tc.PrintfLine("%: %s", header.Remove, "local")
+		case request.ReportAction:
+			tc.PrintfLine("%: %s", header.MessageClass, request.Spam)
+			tc.PrintfLine("%: %s", header.Set, "local, remote")
+		case request.RevokeAction:
+			tc.PrintfLine("%: %s", header.MessageClass, request.Ham)
+			tc.PrintfLine("%: %s", header.Remove, "remote")
+			tc.PrintfLine("%: %s", header.Set, "local")
 		}
 	}
 
 	// Send the newline separating headers and body
 	tc.PrintfLine("")
-	if rq.Body != nil {
+	if msg != nil {
 		// Send the body
-		_, err = tc.Writer.W.Write(rq.Body)
-		if err != nil {
-			return
+		if c.useCompression {
+			var buf bytes.Buffer
+			w := zlib.NewWriter(&buf)
+			_, err = w.Write(msg)
+			if err != nil {
+				return
+			}
+			w.Close()
+			_, err = tc.Writer.W.Write(buf.Bytes())
+			if err != nil {
+				return
+			}
+		} else {
+			_, err = tc.Writer.W.Write(msg)
+			if err != nil {
+				return
+			}
 		}
 		tc.PrintfLine("")
 	}
@@ -234,13 +249,13 @@ func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
 
 	m := responseRe.FindStringSubmatch(line)
 	if len(m) != 4 {
-		if rq.Method != request.Skip {
+		if rq != request.Skip {
 			err = fmt.Errorf("Invalid Server Response: %s", line)
 		}
 		return
 	}
 
-	rs = response.NewResponse(rq.Method)
+	rs = response.NewResponse(rq)
 	rs.StatusCode = response.StatusCodes[m[3]]
 	rs.StatusMsg = m[0]
 	rs.Version = m[1]
@@ -255,7 +270,7 @@ func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
 	// SYMBOLS returns headers and body (rules matched)
 	// TELL returns headers
 
-	if rq.Method == request.Ping {
+	if rq == request.Ping {
 		return
 	}
 
@@ -266,11 +281,11 @@ func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
 	}
 	// log.Printf("xxxxxx => Headers => %v\n", rs.Headers)
 
-	if rq.Method == request.Tell {
+	if rq == request.Tell {
 		return
 	}
 
-	switch rq.Method {
+	switch rq {
 	case request.Check,
 		request.Headers,
 		request.Process,
@@ -299,7 +314,7 @@ func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
 			return
 		}
 		// HEADERS, PROCESS
-		if rq.Method == request.Headers || rq.Method == request.Process || rq.Method == request.Tell {
+		if rq == request.Headers || rq == request.Process || rq == request.Tell {
 			rs.Msg.Header, err = tc.ReadMIMEHeader()
 			if err != nil {
 				return
@@ -341,7 +356,7 @@ func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
 			}
 		}
 		// REPORT, REPORT_IFSPAM
-		if rq.Method == request.Report || rq.Method == request.ReportIfSpam {
+		if rq == request.Report || rq == request.ReportIfSpam {
 			f = false
 			s = false
 			for {
@@ -385,7 +400,7 @@ func (c *Client) cmd(rq *request.Request) (rs *response.Response, err error) {
 			}
 		}
 		// SYMBOLS
-		if rq.Method == request.Symbols {
+		if rq == request.Symbols {
 			line, err = tc.ReadLine()
 			if err != nil {
 				return
