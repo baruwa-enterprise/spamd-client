@@ -10,8 +10,11 @@ package spamc
 import (
 	"bytes"
 	"compress/zlib"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/textproto"
 	"os"
@@ -25,7 +28,8 @@ import (
 )
 
 const (
-	ClientVersion = "1.5"
+	ClientVersion       = "1.5"
+	maxCertSize   int64 = 6000
 )
 
 var (
@@ -36,10 +40,13 @@ var (
 
 // A Client represents a Spamc client.
 type Client struct {
-	network        string
-	address        string
-	user           string
-	useCompression bool
+	network            string
+	address            string
+	user               string
+	rootCA             string
+	useTLS             bool
+	InsecureSkipVerify bool
+	useCompression     bool
 }
 
 // NewClient returns a new Spamc client.
@@ -78,6 +85,39 @@ func (c *Client) EnableCompression() {
 // DisableCompression disables compression
 func (c *Client) DisableCompression() {
 	c.useCompression = false
+}
+
+// EnableTLS enables TLS
+func (c *Client) EnableTLS() {
+	c.useTLS = true
+}
+
+// DisableTLS disables TLS
+func (c *Client) DisableTLS() {
+	c.useTLS = false
+}
+
+// SetRootCA sets the path to the RootCA file
+func (c *Client) SetRootCA(p string) (err error) {
+	var s os.FileInfo
+	if s, err = os.Stat(p); os.IsNotExist(err) || s.Size() > maxCertSize {
+		if err == nil {
+			err = fmt.Errorf("The RootCA file: %s is larger than max allowed: %d", p, maxCertSize)
+		}
+		return
+	}
+	c.rootCA = p
+	return
+}
+
+// EnableTLSVerification enables verification of the server certificate
+func (c *Client) EnableTLSVerification() {
+	c.InsecureSkipVerify = false
+}
+
+// DisableTLSVerification disables verification of the server certificate
+func (c *Client) DisableTLSVerification() {
+	c.InsecureSkipVerify = true
 }
 
 // Check requests the SPAMD service to check a message with a CHECK request.
@@ -152,6 +192,28 @@ func (c *Client) Revoke(m []byte) (rs *response.Response, err error) {
 	return
 }
 
+func (c *Client) tlsConfig() (conf *tls.Config) {
+	conf = &tls.Config{
+		InsecureSkipVerify: c.InsecureSkipVerify,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+		},
+	}
+	if c.rootCA != "" {
+		ca, err := ioutil.ReadFile(c.rootCA)
+		if err != nil {
+			return
+		}
+		p := x509.NewCertPool()
+		p.AppendCertsFromPEM(ca)
+		conf.RootCAs = p
+	}
+	return
+}
+
 func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType, msg []byte) (rs *response.Response, err error) {
 	var s, f bool
 	var line string
@@ -160,7 +222,13 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 	var tc *textproto.Conn
 
 	// Setup the socket connection
-	conn, err = net.Dial(c.network, c.address)
+	if c.useTLS && strings.HasPrefix(c.network, "tcp") {
+		conf := c.tlsConfig()
+		conn, err = tls.Dial(c.network, c.address, conf)
+	} else {
+		conn, err = net.Dial(c.network, c.address)
+	}
+
 	if err != nil {
 		return
 	}

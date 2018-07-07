@@ -73,23 +73,34 @@ My Workd
 	go func(m []byte) {
 		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
+			return
 		}
 		r, e := c.Check(m)
 		if e != nil {
-			log.Fatal(e)
+			log.Println(e)
+			return
 		}
 		d(r)
 		ch <- true
 	}(m)
 	go func(m []byte) {
-		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+		c, err := spamc.NewClient("tcp4", "192.168.1.14:1000", "exim", true)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
+			return
+		}
+		c.EnableTLS()
+		// c.DisableTLSVerification()
+		err = c.SetRootCA("/Users/andrew/tmp/frontend-ca.pem")
+		if err != nil {
+			log.Println(err)
+			return
 		}
 		r, e := c.Headers(m)
 		if e != nil {
-			log.Fatal(e)
+			log.Println(e)
+			return
 		}
 		d(r)
 		ch <- true
@@ -97,11 +108,13 @@ My Workd
 	go func(m []byte) {
 		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
+			return
 		}
 		r, e := c.Process(m)
 		if e != nil {
-			log.Fatal(e)
+			log.Println(e)
+			return
 		}
 		d(r)
 		ch <- true
@@ -109,11 +122,13 @@ My Workd
 	go func(m []byte) {
 		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
+			return
 		}
 		r, e := c.Report(m)
 		if e != nil {
-			log.Fatal(e)
+			log.Println(e)
+			return
 		}
 		d(r)
 		ch <- true
@@ -121,11 +136,13 @@ My Workd
 	go func(m []byte) {
 		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
+			return
 		}
 		r, e := c.ReportIfSpam(m)
 		if e != nil {
-			log.Fatal(e)
+			log.Println(e)
+			return
 		}
 		d(r)
 		ch <- true
@@ -133,11 +150,13 @@ My Workd
 	go func(m []byte) {
 		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
+			return
 		}
 		r, e := c.Symbols(m)
 		if e != nil {
-			log.Fatal(e)
+			log.Println(e)
+			return
 		}
 		d(r)
 		ch <- true
@@ -145,27 +164,32 @@ My Workd
 	<-ch
 	c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return
 	}
 	r, e := c.Tell(m, request.Ham, request.LearnAction)
 	if e != nil {
-		log.Fatal(e)
+		log.Println(e)
+		return
 	}
 	d(r)
 	r, e = c.Tell(m, request.Ham, request.ForgetAction)
 	if e != nil {
-		log.Fatal(e)
+		log.Println(e)
+		return
 	}
 	d(r)
 	//
 	r, e = c.Tell(m, request.Spam, request.LearnAction)
 	if e != nil {
-		log.Fatal(e)
+		log.Println(e)
+		return
 	}
 	d(r)
 	r, e = c.Tell(m, request.Spam, request.ForgetAction)
 	if e != nil {
-		log.Fatal(e)
+		log.Println(e)
+		return
 	}
 	d(r)
 }
