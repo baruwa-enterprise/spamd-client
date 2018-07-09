@@ -118,6 +118,7 @@ type Response struct {
 	IsSpam        bool
 	Headers       textproto.MIMEHeader
 	Msg           *Msg
+	Raw           []byte
 	Rules         []map[string]string
 }
 
@@ -128,6 +129,7 @@ func NewResponse(m request.Method) *Response {
 		Headers:       make(textproto.MIMEHeader),
 		Msg:           NewMsg(),
 		Rules:         make([]map[string]string, 1),
+		Raw:           make([]byte, 1),
 	}
 }
 

@@ -8,6 +8,7 @@
 package spamc
 
 import (
+	"bufio"
 	"bytes"
 	"compress/zlib"
 	"crypto/tls"
@@ -47,6 +48,7 @@ type Client struct {
 	useTLS             bool
 	InsecureSkipVerify bool
 	useCompression     bool
+	returnRawBody      bool
 }
 
 // NewClient returns a new Spamc client.
@@ -95,6 +97,16 @@ func (c *Client) EnableTLS() {
 // DisableTLS disables TLS
 func (c *Client) DisableTLS() {
 	c.useTLS = false
+}
+
+// EnableRawBody enables returning the raw body
+func (c *Client) EnableRawBody() {
+	c.returnRawBody = true
+}
+
+// DisableRawBody enables returning the raw body
+func (c *Client) DisableRawBody() {
+	c.returnRawBody = false
 }
 
 // SetRootCA sets the path to the RootCA file
@@ -316,7 +328,7 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 	}
 
 	m := responseRe.FindStringSubmatch(line)
-	if len(m) != 4 {
+	if m == nil {
 		if rq != request.Skip {
 			err = fmt.Errorf("Invalid Server Response: %s", line)
 		}
@@ -363,7 +375,7 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 		// Process spam header
 		line = rs.Headers.Get("Spam")
 		m = spamHeaderRe.FindStringSubmatch(line)
-		if len(m) != 4 {
+		if m == nil {
 			err = fmt.Errorf("Invalid Server Response: %s", line)
 			return
 		}
@@ -382,15 +394,42 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 			return
 		}
 		// HEADERS, PROCESS
-		if rq == request.Headers || rq == request.Process || rq == request.Tell {
-			rs.Msg.Header, err = tc.ReadMIMEHeader()
+		if rq == request.Headers || rq == request.Process {
+			var tp *textproto.Reader
+			if c.returnRawBody {
+				for {
+					lineb, err = tc.R.ReadBytes('\n')
+					if err != nil {
+						if err == io.EOF {
+							err = nil
+							rs.Raw = rs.Raw[1:]
+							break
+						}
+						return
+					}
+					if bytes.Equal(lineb, []byte("\r\n")) {
+						continue
+					}
+					rs.Raw = append(rs.Raw, lineb...)
+				}
+				tp = textproto.NewReader(bufio.NewReader(bytes.NewReader(rs.Raw)))
+				rs.Msg.Header, err = tp.ReadMIMEHeader()
+			} else {
+				rs.Msg.Header, err = tc.ReadMIMEHeader()
+			}
+
 			if err != nil {
 				return
 			}
 			s = false
 			f = false
 			for {
-				lineb, err = tc.R.ReadBytes('\n')
+				if c.returnRawBody {
+					lineb, err = tp.R.ReadBytes('\n')
+				} else {
+					lineb, err = tc.R.ReadBytes('\n')
+				}
+
 				if err != nil {
 					if err == io.EOF {
 						err = nil
@@ -404,7 +443,7 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 				}
 				if s {
 					mb := ruleRe.FindSubmatch(lineb)
-					if len(mb) == 4 {
+					if mb != nil {
 						rd := make(map[string]string)
 						rd["score"] = string(mb[1])
 						rd["name"] = string(mb[2])
@@ -428,15 +467,20 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 			f = false
 			s = false
 			for {
-				line, err = tc.ReadLine()
+				lineb, err = tc.R.ReadBytes('\n')
 				if err != nil {
 					if err == io.EOF {
 						err = nil
+						rs.Raw = rs.Raw[1:]
 					}
 					return
 				}
 
-				if !s && !strings.HasPrefix(line, "----") {
+				if c.returnRawBody {
+					rs.Raw = append(rs.Raw, lineb...)
+				}
+
+				if !s && !bytes.HasPrefix(lineb, []byte("----")) {
 					continue
 				}
 
@@ -445,20 +489,20 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 					continue
 				}
 
-				if line == "" {
+				if bytes.Equal(lineb, []byte("\n")) {
 					continue
 				}
 
-				m = ruleRe.FindStringSubmatch(line)
-				if len(m) != 4 {
-					err = fmt.Errorf("Invalid Server Response: #%s#", line)
+				mb := ruleRe.FindSubmatch(bytes.TrimRight(lineb, "\n"))
+				if mb == nil {
+					err = fmt.Errorf("Invalid Server Response: %s", lineb)
 					return
 				}
 
 				rd := make(map[string]string)
-				rd["score"] = m[1]
-				rd["name"] = m[2]
-				rd["description"] = m[3]
+				rd["score"] = string(mb[1])
+				rd["name"] = string(mb[2])
+				rd["description"] = string(mb[3])
 				if !f {
 					rs.Rules[0] = rd
 					f = true
@@ -469,15 +513,25 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 		}
 		// SYMBOLS
 		if rq == request.Symbols {
-			line, err = tc.ReadLine()
+			lineb, err = tc.R.ReadBytes('\n')
 			if err != nil {
-				return
+				if err == io.EOF {
+					err = nil
+				} else {
+					return
+				}
 			}
+
+			if c.returnRawBody {
+				rs.Raw = append(rs.Raw, lineb...)
+				rs.Raw = rs.Raw[1:]
+			}
+
 			f = false
-			for _, rn := range strings.Split(line, ",") {
+			for _, rn := range bytes.Split(lineb, []byte(",")) {
 				rd := make(map[string]string)
 				rd["score"] = ""
-				rd["name"] = rn
+				rd["name"] = string(rn)
 				rd["description"] = ""
 				if !f {
 					rs.Rules[0] = rd

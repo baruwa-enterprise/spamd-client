@@ -38,6 +38,7 @@ func d(r *response.Response) {
 	log.Printf("Msg => %v\n", r.Msg)
 	log.Printf("Msg.Header => %v\n", r.Msg.Header)
 	log.Printf("Msg.Body => %s", r.Msg.Body)
+	log.Printf("Msg.Raw => %s", r.Raw)
 	log.Printf("Rules => %v\n", r.Rules)
 	log.Println("===================================")
 }
@@ -71,6 +72,9 @@ My Workd
 	// log.Println("Pong =>", s)
 	// log.Println("===================================")
 	go func(m []byte) {
+		defer func() {
+			ch <- true
+		}()
 		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
 		if err != nil {
 			log.Println(err)
@@ -82,84 +86,98 @@ My Workd
 			return
 		}
 		d(r)
-		ch <- true
 	}(m)
 	go func(m []byte) {
 		c, err := spamc.NewClient("tcp4", "192.168.1.14:1000", "exim", true)
+		defer func() {
+			ch <- true
+		}()
 		if err != nil {
-			log.Println(err)
+			log.Println("ERROR:", err)
 			return
 		}
 		c.EnableTLS()
 		// c.DisableTLSVerification()
+		c.EnableRawBody()
 		err = c.SetRootCA("/Users/andrew/tmp/frontend-ca.pem")
 		if err != nil {
-			log.Println(err)
+			log.Println("ERROR:", err)
 			return
 		}
 		r, e := c.Headers(m)
 		if e != nil {
-			log.Println(e)
+			log.Println("ERROR:", e)
 			return
 		}
 		d(r)
-		ch <- true
 	}(m)
 	go func(m []byte) {
 		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+		defer func() {
+			ch <- true
+		}()
 		if err != nil {
 			log.Println(err)
 			return
 		}
+		c.EnableRawBody()
 		r, e := c.Process(m)
 		if e != nil {
 			log.Println(e)
 			return
 		}
 		d(r)
-		ch <- true
 	}(m)
 	go func(m []byte) {
+		defer func() {
+			ch <- true
+		}()
 		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
 		if err != nil {
 			log.Println(err)
 			return
 		}
+		c.EnableRawBody()
 		r, e := c.Report(m)
 		if e != nil {
 			log.Println(e)
 			return
 		}
 		d(r)
-		ch <- true
 	}(m)
 	go func(m []byte) {
+		defer func() {
+			ch <- true
+		}()
 		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
 		if err != nil {
 			log.Println(err)
 			return
 		}
+		c.EnableRawBody()
 		r, e := c.ReportIfSpam(m)
 		if e != nil {
 			log.Println(e)
 			return
 		}
 		d(r)
-		ch <- true
 	}(m)
 	go func(m []byte) {
+		defer func() {
+			ch <- true
+		}()
 		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
 		if err != nil {
 			log.Println(err)
 			return
 		}
+		c.EnableRawBody()
 		r, e := c.Symbols(m)
 		if e != nil {
 			log.Println(e)
 			return
 		}
 		d(r)
-		ch <- true
 	}(m)
 	<-ch
 	c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
