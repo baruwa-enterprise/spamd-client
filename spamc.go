@@ -348,7 +348,7 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 	// REPORT_IFSPAM returns headers and body (report) if spam else headers only
 	// SKIP no response connection closed
 	// SYMBOLS returns headers and body (rules matched)
-	// TELL returns headers
+	// TELL returns headers no body
 
 	if rq == request.Ping {
 		return
@@ -359,7 +359,6 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 	if err != nil {
 		return
 	}
-	// log.Printf("xxxxxx => Headers => %v\n", rs.Headers)
 
 	if rq == request.Tell {
 		return
