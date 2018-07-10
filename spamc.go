@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/baruwa-enterprise/spamc/header"
 	"github.com/baruwa-enterprise/spamc/request"
@@ -49,6 +50,7 @@ type Client struct {
 	InsecureSkipVerify bool
 	useCompression     bool
 	returnRawBody      bool
+	connTimeout        int
 }
 
 // NewClient returns a new Spamc client.
@@ -130,6 +132,11 @@ func (c *Client) EnableTLSVerification() {
 // DisableTLSVerification disables verification of the server certificate
 func (c *Client) DisableTLSVerification() {
 	c.InsecureSkipVerify = true
+}
+
+// SetConnTimeout sets the connection timeout
+func (c *Client) SetConnTimeout(s int) {
+	c.connTimeout = s
 }
 
 // Check requests the SPAMD service to check a message with a CHECK request.
@@ -228,17 +235,22 @@ func (c *Client) tlsConfig() (conf *tls.Config) {
 
 func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType, msg []byte) (rs *response.Response, err error) {
 	var s, f bool
+	var d *net.Dialer
 	var line string
 	var lineb []byte
 	var conn net.Conn
 	var tc *textproto.Conn
 
 	// Setup the socket connection
+	d = &net.Dialer{}
+	if c.connTimeout > 0 {
+		d.Timeout = time.Duration(c.connTimeout) * time.Second
+	}
 	if c.useTLS && strings.HasPrefix(c.network, "tcp") {
 		conf := c.tlsConfig()
-		conn, err = tls.Dial(c.network, c.address, conf)
+		conn, err = tls.DialWithDialer(d, c.network, c.address, conf)
 	} else {
-		conn, err = net.Dial(c.network, c.address)
+		conn, err = d.Dial(c.network, c.address)
 	}
 
 	if err != nil {
@@ -274,7 +286,6 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 			tc.PrintfLine("%s: %s", header.Set, "local")
 		case request.ForgetAction:
 			tc.PrintfLine("%s: %s", header.Remove, "local")
-			fmt.Printf("%s: %s\n", header.Remove, "local")
 		case request.ReportAction:
 			tc.PrintfLine("%s: %s", header.MessageClass, request.Spam)
 			tc.PrintfLine("%s: %s", header.Set, "local, remote")
