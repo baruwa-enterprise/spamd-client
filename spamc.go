@@ -40,7 +40,6 @@ var (
 	responseRe   = regexp.MustCompile(`^SPAMD/(?P<version>[0-9\.]+)\s(?P<code>[0-9]+)\s(?P<message>[0-9A-Z_]+)$`)
 	spamHeaderRe = regexp.MustCompile(`^(?P<isspam>True|False|Yes|No)\s;\s(?P<score>\-?[0-9\.]+)\s\/\s(?P<basescore>[0-9\.]+)`)
 	ruleRe       = regexp.MustCompile(`(?m)^\s*(?P<score>-?[0-9]+\.?[0-9]?)\s+(?P<name>[A-Z0-9\_]+)\s+(?P<desc>[^\s|-|\d]+.*(?:\n\s{2,}\S.*)?)$`)
-	//`^(\s|-)([0-9\.]+)\s+([A-Z0-9\_]+)\s+([^\s|-|\d]+.*(?:\n\s{2,}\S.*)?)$`
 )
 
 // A Client represents a Spamc client.
@@ -289,33 +288,12 @@ func (c *Client) tlsConfig() (conf *tls.Config) {
 }
 
 func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType, msg []byte) (rs *response.Response, err error) {
-	var s, f bool
-	var d *net.Dialer
 	var line string
-	var lineb []byte
 	var conn net.Conn
 	var tc *textproto.Conn
 
 	// Setup the socket connection
-	d = &net.Dialer{}
-	if c.connTimeout > 0 {
-		d.Timeout = c.connTimeout
-	}
-
-	for i := 0; i <= c.connRetries; i++ {
-		if c.useTLS && strings.HasPrefix(c.network, "tcp") {
-			conf := c.tlsConfig()
-			conn, err = tls.DialWithDialer(d, c.network, c.address, conf)
-		} else {
-			conn, err = d.Dial(c.network, c.address)
-		}
-		if e, ok := err.(net.Error); ok && e.Timeout() {
-			time.Sleep(c.connSleep)
-			continue
-		}
-		break
-	}
-
+	conn, err = c.dial()
 	if err != nil {
 		return
 	}
@@ -408,9 +386,7 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 
 	m := responseRe.FindStringSubmatch(line)
 	if m == nil {
-		if rq != request.Skip {
-			err = fmt.Errorf("Invalid Server Response: %s", line)
-		}
+		err = fmt.Errorf("Invalid Server Response: %s", line)
 		return
 	}
 
@@ -451,133 +427,124 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 		request.ReportIfSpam,
 		request.Symbols:
 		// Process spam header
-		line = rs.Headers.Get("Spam")
-		m = spamHeaderRe.FindStringSubmatch(line)
-		if m == nil {
-			err = fmt.Errorf("Invalid Server Response: %s", line)
-			return
-		}
-		tv := strings.ToLower(m[1])
-		if tv == "true" || tv == "yes" {
-			rs.IsSpam = true
-		}
-		rs.Score, err = strconv.ParseFloat(m[2], 64)
+		err = c.spamHeader(rs)
 		if err != nil {
-			err = fmt.Errorf("Invalid Server Response: %s", err)
-			return
-		}
-		rs.BaseScore, err = strconv.ParseFloat(m[3], 64)
-		if err != nil {
-			err = fmt.Errorf("Invalid Server Response: %s", err)
 			return
 		}
 		// HEADERS, PROCESS
 		if rq == request.Headers || rq == request.Process {
-			var tp *textproto.Reader
-			if c.returnRawBody {
-				for {
-					lineb, err = tc.R.ReadBytes('\n')
-					if err != nil {
-						if err == io.EOF {
-							err = nil
-							rs.Raw = rs.Raw[1:]
-							break
-						}
-						return
-					}
-					if bytes.Equal(lineb, []byte("\r\n")) {
-						continue
-					}
-					rs.Raw = append(rs.Raw, lineb...)
-				}
-				tp = textproto.NewReader(bufio.NewReader(bytes.NewReader(rs.Raw)))
-				rs.Msg.Header, err = tp.ReadMIMEHeader()
-			} else {
-				rs.Msg.Header, err = tc.ReadMIMEHeader()
-			}
-
-			if err != nil {
-				return
-			}
-			s = false
-			f = false
-			for {
-				if c.returnRawBody {
-					lineb, err = tp.R.ReadBytes('\n')
-				} else {
-					lineb, err = tc.R.ReadBytes('\n')
-				}
-
-				if err != nil {
-					if err == io.EOF {
-						err = nil
-						rs.Msg.Body = rs.Msg.Body[1:]
-					}
-					return
-				}
-
-				if !s && bytes.HasPrefix(lineb, []byte("----")) {
-					s = true
-				}
-				if s {
-					mb := ruleRe.FindSubmatch(lineb)
-					if mb != nil {
-						rd := make(map[string]string)
-						rd["score"] = string(mb[1])
-						rd["name"] = string(mb[2])
-						rd["description"] = string(mb[3])
-						if !f {
-							rs.Rules[0] = rd
-							f = true
-						} else {
-							rs.Rules = append(rs.Rules, rd)
-						}
-					}
-				}
-				if bytes.Equal(lineb, []byte("\r\n")) {
-					continue
-				}
-				rs.Msg.Body = append(rs.Msg.Body, lineb...)
-			}
+			err = c.headers(tc, rs)
 		}
 		// REPORT, REPORT_IFSPAM
 		if rq == request.Report || rq == request.ReportIfSpam {
-			f = false
-			s = false
-			for {
-				lineb, err = tc.R.ReadBytes('\n')
-				if err != nil {
-					if err == io.EOF {
-						err = nil
-						rs.Raw = rs.Raw[1:]
-					}
-					return
-				}
+			err = c.report(tc, rs)
+		}
+		// SYMBOLS
+		if rq == request.Symbols {
+			err = c.symbols(tc, rs)
+		}
+	}
+	return
+}
 
-				if c.returnRawBody {
-					rs.Raw = append(rs.Raw, lineb...)
-					fmt.Printf("%s", lineb)
-				}
+func (c *Client) dial() (conn net.Conn, err error) {
+	d := &net.Dialer{}
 
-				if !s && !bytes.HasPrefix(lineb, []byte("----")) {
-					continue
-				}
+	if c.connTimeout > 0 {
+		d.Timeout = c.connTimeout
+	}
 
-				if !s {
-					s = true
-					continue
-				}
+	for i := 0; i <= c.connRetries; i++ {
+		if c.useTLS && strings.HasPrefix(c.network, "tcp") {
+			conf := c.tlsConfig()
+			conn, err = tls.DialWithDialer(d, c.network, c.address, conf)
+		} else {
+			conn, err = d.Dial(c.network, c.address)
+		}
+		if e, ok := err.(net.Error); ok && e.Timeout() {
+			time.Sleep(c.connSleep)
+			continue
+		}
+		break
+	}
+	return
+}
 
-				if bytes.Equal(lineb, []byte("\n")) {
-					continue
-				}
+func (c *Client) spamHeader(rs *response.Response) (err error) {
+	line := rs.Headers.Get("Spam")
+	m := spamHeaderRe.FindStringSubmatch(line)
+	if m == nil {
+		err = fmt.Errorf("Invalid Server Response: %s", line)
+		return
+	}
+	tv := strings.ToLower(m[1])
+	if tv == "true" || tv == "yes" {
+		rs.IsSpam = true
+	}
+	rs.Score, err = strconv.ParseFloat(m[2], 64)
+	if err != nil {
+		err = fmt.Errorf("Invalid Server Response: %s", err)
+		return
+	}
+	rs.BaseScore, err = strconv.ParseFloat(m[3], 64)
+	if err != nil {
+		err = fmt.Errorf("Invalid Server Response: %s", err)
+		return
+	}
+	return
+}
 
-				mb := ruleRe.FindSubmatch(bytes.TrimRight(lineb, "\n"))
-				if mb == nil {
-					err = fmt.Errorf("Invalid Server Response: %s", lineb)
-					return
+func (c *Client) headers(tc *textproto.Conn, rs *response.Response) (err error) {
+	var f, s bool
+	var lineb []byte
+	var tp *textproto.Reader
+	if c.returnRawBody {
+		for {
+			lineb, err = tc.R.ReadBytes('\n')
+			if err != nil {
+				if err == io.EOF {
+					err = nil
+					rs.Raw = rs.Raw[1:]
+					break
 				}
+				return
+			}
+			if bytes.Equal(lineb, []byte("\r\n")) {
+				continue
+			}
+			rs.Raw = append(rs.Raw, lineb...)
+		}
+		tp = textproto.NewReader(bufio.NewReader(bytes.NewReader(rs.Raw)))
+		rs.Msg.Header, err = tp.ReadMIMEHeader()
+	} else {
+		rs.Msg.Header, err = tc.ReadMIMEHeader()
+	}
 
+	if err != nil {
+		return
+	}
+
+	for {
+		if c.returnRawBody {
+			lineb, err = tp.R.ReadBytes('\n')
+		} else {
+			lineb, err = tc.R.ReadBytes('\n')
+		}
+
+		if err != nil {
+			if err == io.EOF {
+				err = nil
+				rs.Msg.Body = rs.Msg.Body[1:]
+			}
+			return
+		}
+
+		if !s && bytes.HasPrefix(lineb, []byte("----")) {
+			s = true
+		}
+		if s {
+			mb := ruleRe.FindSubmatch(lineb)
+			if mb != nil {
 				rd := make(map[string]string)
 				rd["score"] = string(mb[1])
 				rd["name"] = string(mb[2])
@@ -590,39 +557,77 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 				}
 			}
 		}
-		// SYMBOLS
-		if rq == request.Symbols {
-			// lineb, err = tc.R.ReadBytes('\n')
-			// if err != nil {
-			// 	if err == io.EOF {
-			// 		err = nil
-			// 	} else {
-			// 		return
-			// 	}
-			// }
+		if bytes.Equal(lineb, []byte("\r\n")) {
+			continue
+		}
+		rs.Msg.Body = append(rs.Msg.Body, lineb...)
+	}
+}
 
-			// if c.returnRawBody {
-			// 	rs.Raw = append(rs.Raw, lineb...)
-			// 	rs.Raw = rs.Raw[1:]
-			// }
+func (c *Client) report(tc *textproto.Conn, rs *response.Response) (err error) {
+	var f, s bool
+	var lineb []byte
+	for {
+		lineb, err = tc.R.ReadBytes('\n')
+		if err != nil {
+			if err == io.EOF {
+				err = nil
+				rs.Raw = rs.Raw[1:]
+			}
+			return
+		}
 
-			// f = false
-			// for _, rn := range bytes.Split(lineb, []byte(",")) {
-			// 	rd := make(map[string]string)
-			// 	rd["score"] = ""
-			// 	rd["name"] = string(rn)
-			// 	rd["description"] = ""
-			// 	if !f {
-			// 		rs.Rules[0] = rd
-			// 		f = true
-			// 	} else {
-			// 		rs.Rules = append(rs.Rules, rd)
-			// 	}
-			// }
-			err = c.symbols(tc, rs)
+		// Some rules are continued on the next line so
+		// for the regex to work further down we need to
+		// read the full continued line here
+		if !bytes.Equal(lineb, []byte("\n")) {
+			if tc.R.Buffered() > 2 {
+				peek, e := tc.R.Peek(2)
+				if e == nil && isASCIISpace(peek[1]) {
+					// read the next line
+					var tmpline []byte
+					tmpline, err = tc.R.ReadBytes('\n')
+					if err == nil {
+						lineb = append(lineb, tmpline...)
+					}
+				}
+			}
+		}
+
+		if c.returnRawBody {
+			rs.Raw = append(rs.Raw, lineb...)
+		}
+
+		if !s && !bytes.HasPrefix(lineb, []byte("----")) {
+			continue
+		}
+
+		if !s {
+			s = true
+			continue
+		}
+
+		if bytes.Equal(lineb, []byte("\n")) {
+			continue
+		}
+
+		mb := ruleRe.FindSubmatch(bytes.TrimRight(lineb, "\n"))
+		if mb == nil {
+			err = fmt.Errorf("Invalid Server Response: %s", lineb)
+			return
+		}
+
+		rd := make(map[string]string)
+		rd["score"] = string(mb[1])
+		rd["name"] = string(mb[2])
+		rd["description"] = string(mb[3])
+		if !f {
+			rs.Rules[0] = rd
+			f = true
+		} else {
+			rs.Rules = append(rs.Rules, rd)
 		}
 	}
-	return
 }
 
 func (c *Client) symbols(tc *textproto.Conn, rs *response.Response) (err error) {
@@ -656,4 +661,8 @@ func (c *Client) symbols(tc *textproto.Conn, rs *response.Response) (err error) 
 		}
 	}
 	return
+}
+
+func isASCIISpace(b byte) bool {
+	return b == ' ' || b == '\t'
 }
