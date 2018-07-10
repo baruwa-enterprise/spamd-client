@@ -270,17 +270,18 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 	if rq == request.Tell {
 		switch a {
 		case request.LearnAction:
-			tc.PrintfLine("%: %s", header.MessageClass, l)
-			tc.PrintfLine("%: %s", header.Set, "local")
+			tc.PrintfLine("%s: %s", header.MessageClass, l)
+			tc.PrintfLine("%s: %s", header.Set, "local")
 		case request.ForgetAction:
-			tc.PrintfLine("%: %s", header.Remove, "local")
+			tc.PrintfLine("%s: %s", header.Remove, "local")
+			fmt.Printf("%s: %s\n", header.Remove, "local")
 		case request.ReportAction:
-			tc.PrintfLine("%: %s", header.MessageClass, request.Spam)
-			tc.PrintfLine("%: %s", header.Set, "local, remote")
+			tc.PrintfLine("%s: %s", header.MessageClass, request.Spam)
+			tc.PrintfLine("%s: %s", header.Set, "local, remote")
 		case request.RevokeAction:
-			tc.PrintfLine("%: %s", header.MessageClass, request.Ham)
-			tc.PrintfLine("%: %s", header.Remove, "remote")
-			tc.PrintfLine("%: %s", header.Set, "local")
+			tc.PrintfLine("%s: %s", header.MessageClass, request.Ham)
+			tc.PrintfLine("%s: %s", header.Remove, "remote")
+			tc.PrintfLine("%s: %s", header.Set, "local")
 		}
 	}
 
