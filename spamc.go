@@ -30,14 +30,17 @@ import (
 )
 
 const (
-	ClientVersion       = "1.5"
-	maxCertSize   int64 = 6000
+	ClientVersion        = "1.5"
+	maxCertSize    int64 = 6000
+	defaultTimeout       = 15 * time.Second
+	defaultSleep         = 1 * time.Second
 )
 
 var (
 	responseRe   = regexp.MustCompile(`^SPAMD/(?P<version>[0-9\.]+)\s(?P<code>[0-9]+)\s(?P<message>[0-9A-Z_]+)$`)
 	spamHeaderRe = regexp.MustCompile(`^(?P<isspam>True|False|Yes|No)\s;\s(?P<score>\-?[0-9\.]+)\s\/\s(?P<basescore>[0-9\.]+)`)
-	ruleRe       = regexp.MustCompile(`^\s*(?P<score>-?[0-9]+\.?[0-9]?)\s+(?P<name>[A-Z0-9\_]+)\s+(?P<desc>\w+.*)$`)
+	ruleRe       = regexp.MustCompile(`(?m)^\s*(?P<score>-?[0-9]+\.?[0-9]?)\s+(?P<name>[A-Z0-9\_]+)\s+(?P<desc>[^\s|-|\d]+.*(?:\n\s{2,}\S.*)?)$`)
+	//`^(\s|-)([0-9\.]+)\s+([A-Z0-9\_]+)\s+([^\s|-|\d]+.*(?:\n\s{2,}\S.*)?)$`
 )
 
 // A Client represents a Spamc client.
@@ -50,7 +53,12 @@ type Client struct {
 	InsecureSkipVerify bool
 	useCompression     bool
 	returnRawBody      bool
-	connTimeout        int
+	connTimeout        time.Duration
+	connRetries        int
+	connSleep          time.Duration
+	cmdTimeout         time.Duration
+	cmdRetries         int
+	cmdSleep           time.Duration
 }
 
 // NewClient returns a new Spamc client.
@@ -72,6 +80,8 @@ func NewClient(network, address, user string, useCompression bool) (c *Client, e
 		address:        address,
 		user:           user,
 		useCompression: useCompression,
+		connSleep:      defaultSleep,
+		cmdSleep:       defaultSleep,
 	}
 	return
 }
@@ -135,8 +145,43 @@ func (c *Client) DisableTLSVerification() {
 }
 
 // SetConnTimeout sets the connection timeout
-func (c *Client) SetConnTimeout(s int) {
-	c.connTimeout = s
+func (c *Client) SetConnTimeout(t time.Duration) {
+	c.connTimeout = t
+}
+
+// SetCmdTimeout sets the cmd timeout
+func (c *Client) SetCmdTimeout(t time.Duration) {
+	c.cmdTimeout = t
+}
+
+// SetConnRetries sets the number of times
+// connection is retried
+func (c *Client) SetConnRetries(s int) {
+	if s < 0 {
+		s = 0
+	}
+	c.connRetries = s
+}
+
+// SetCmdRetries sets the number of times
+// cmd is retried
+func (c *Client) SetCmdRetries(s int) {
+	if s < 0 {
+		s = 0
+	}
+	c.cmdRetries = s
+}
+
+// SetConnSleep sets the connection retry sleep
+// duration in seconds
+func (c *Client) SetConnSleep(s time.Duration) {
+	c.connSleep = s
+}
+
+// SetCmdSleep sets the cmd retry sleep duration
+// in seconds
+func (c *Client) SetCmdSleep(s time.Duration) {
+	c.cmdSleep = s
 }
 
 // Check requests the SPAMD service to check a message with a CHECK request.
@@ -185,6 +230,16 @@ func (c *Client) ReportIfSpam(m []byte) (rs *response.Response, err error) {
 // Symbols requests the SPAMD service to check a message with a
 // SYMBOLS request.
 func (c *Client) Symbols(m []byte) (rs *response.Response, err error) {
+	// for i := 0; i <= c.cmdRetries; i++ {
+	// 	rs, err = c.cmd(request.Symbols, request.NoAction, request.NoneType, m)
+	// 	if err == nil && rs.StatusCode.IsTemp() {
+	// 		if c.cmdRetries > 0 {
+	// 			time.Sleep(c.cmdSleep)
+	// 			continue
+	// 		}
+	// 	}
+	// 	break
+	// }
 	rs, err = c.cmd(request.Symbols, request.NoAction, request.NoneType, m)
 	return
 }
@@ -244,17 +299,29 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 	// Setup the socket connection
 	d = &net.Dialer{}
 	if c.connTimeout > 0 {
-		d.Timeout = time.Duration(c.connTimeout) * time.Second
+		d.Timeout = c.connTimeout
 	}
-	if c.useTLS && strings.HasPrefix(c.network, "tcp") {
-		conf := c.tlsConfig()
-		conn, err = tls.DialWithDialer(d, c.network, c.address, conf)
-	} else {
-		conn, err = d.Dial(c.network, c.address)
+
+	for i := 0; i <= c.connRetries; i++ {
+		if c.useTLS && strings.HasPrefix(c.network, "tcp") {
+			conf := c.tlsConfig()
+			conn, err = tls.DialWithDialer(d, c.network, c.address, conf)
+		} else {
+			conn, err = d.Dial(c.network, c.address)
+		}
+		if e, ok := err.(net.Error); ok && e.Timeout() {
+			time.Sleep(c.connSleep)
+			continue
+		}
+		break
 	}
 
 	if err != nil {
 		return
+	}
+
+	if c.cmdTimeout > 0 {
+		conn.SetDeadline(time.Now().Add(c.cmdTimeout))
 	}
 
 	tc = textproto.NewConn(conn)
@@ -489,6 +556,7 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 
 				if c.returnRawBody {
 					rs.Raw = append(rs.Raw, lineb...)
+					fmt.Printf("%s", lineb)
 				}
 
 				if !s && !bytes.HasPrefix(lineb, []byte("----")) {
@@ -524,33 +592,67 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 		}
 		// SYMBOLS
 		if rq == request.Symbols {
-			lineb, err = tc.R.ReadBytes('\n')
-			if err != nil {
-				if err == io.EOF {
-					err = nil
-				} else {
-					return
-				}
-			}
+			// lineb, err = tc.R.ReadBytes('\n')
+			// if err != nil {
+			// 	if err == io.EOF {
+			// 		err = nil
+			// 	} else {
+			// 		return
+			// 	}
+			// }
 
-			if c.returnRawBody {
-				rs.Raw = append(rs.Raw, lineb...)
-				rs.Raw = rs.Raw[1:]
-			}
+			// if c.returnRawBody {
+			// 	rs.Raw = append(rs.Raw, lineb...)
+			// 	rs.Raw = rs.Raw[1:]
+			// }
 
-			f = false
-			for _, rn := range bytes.Split(lineb, []byte(",")) {
-				rd := make(map[string]string)
-				rd["score"] = ""
-				rd["name"] = string(rn)
-				rd["description"] = ""
-				if !f {
-					rs.Rules[0] = rd
-					f = true
-				} else {
-					rs.Rules = append(rs.Rules, rd)
-				}
-			}
+			// f = false
+			// for _, rn := range bytes.Split(lineb, []byte(",")) {
+			// 	rd := make(map[string]string)
+			// 	rd["score"] = ""
+			// 	rd["name"] = string(rn)
+			// 	rd["description"] = ""
+			// 	if !f {
+			// 		rs.Rules[0] = rd
+			// 		f = true
+			// 	} else {
+			// 		rs.Rules = append(rs.Rules, rd)
+			// 	}
+			// }
+			err = c.symbols(tc, rs)
+		}
+	}
+	return
+}
+
+func (c *Client) symbols(tc *textproto.Conn, rs *response.Response) (err error) {
+	var f bool
+	var lineb []byte
+	lineb, err = tc.R.ReadBytes('\n')
+	if err != nil {
+		if err == io.EOF {
+			err = nil
+		} else {
+			return
+		}
+	}
+
+	if c.returnRawBody {
+		rs.Raw = append(rs.Raw, lineb...)
+		rs.Raw = rs.Raw[1:]
+	}
+
+	f = false
+	for _, rn := range bytes.Split(lineb, []byte(",")) {
+		rd := make(map[string]string)
+		rd["score"] = ""
+		rd["name"] = string(rn)
+		rd["description"] = ""
+		if !f {
+			rs.Rules[0] = rd
+			f = true
+		} else {
+			rs.Rules = append(rs.Rules, rd)
 		}
 	}
 	return
