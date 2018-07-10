@@ -107,6 +107,15 @@ func (s StatusCode) Error() (r string) {
 	return
 }
 
+// IsTemp returns a bool indicating if the status is temporary.
+func (s StatusCode) IsTemp() (r bool) {
+	switch s {
+	case ExTempFail, ExTimeout:
+		r = true
+	}
+	return
+}
+
 // A Response represents a server response from a Spamc server.
 type Response struct {
 	RequestMethod request.Method
