@@ -4,6 +4,9 @@ Golang Spamc Client
 
 ## Getting started
 
+[![GoDoc](https://godoc.org/github.com/baruwa-enterprise/spamc?status.svg)](https://godoc.org/github.com/baruwa-enterprise/spamc)
+[![MPLv2 License](https://img.shields.io/badge/license-MPLv2-blue.svg?style=flat-square)](https://www.mozilla.org/MPL/2.0/)
+
 This project requires Go to be installed.
 
 Running it then should be as simple as:
