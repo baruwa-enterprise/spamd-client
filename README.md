@@ -4,13 +4,19 @@ Golang Spamc Client
 
 ## Getting started
 
-This project requires Go to be installed. On OS X with Homebrew you can just run `brew install go`.
+This project requires Go to be installed.
 
 Running it then should be as simple as:
 
 ```console
-$ make
+$ make build
 $ ./bin/spamc
+```
+
+Or
+
+```console
+$ go get github.com/baruwa-enterprise/spamc/cmd/spamc
 ```
 
 ### Testing
