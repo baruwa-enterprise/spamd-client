@@ -1,0 +1,12 @@
+Date: Mon, 23 Jun 2015 11:40:36 -0400
+From: Gopher <from@example.com>
+To: Another Gopher <to@example.com>
+Subject: Gophers at Gophercon
+Message-Id: <v0421010eb70653b14e06@[192.168.1.84]>
+
+Message body
+James
+
+My Workd
+
+++++++++++++++
