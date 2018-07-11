@@ -10,7 +10,9 @@ Golang Spamc Client
 
 This project requires Go to be installed.
 
-Running it then should be as simple as:
+### Spamc client
+
+The spamc client can be installed as follows
 
 ```console
 $ make build
@@ -21,6 +23,20 @@ Or
 
 ```console
 $ go get github.com/baruwa-enterprise/spamc/cmd/spamc
+```
+
+### Spamc library
+
+To install the library
+
+```console
+go get get github.com/baruwa-enterprise/spamc
+```
+
+You can then import it in your code
+
+```golang
+import "github.com/baruwa-enterprise/spamc"
 ```
 
 ### Testing
