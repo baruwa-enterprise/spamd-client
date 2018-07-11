@@ -40,6 +40,7 @@ var (
 	responseRe   = regexp.MustCompile(`^SPAMD/(?P<version>[0-9\.]+)\s(?P<code>[0-9]+)\s(?P<message>[0-9A-Z_]+)$`)
 	spamHeaderRe = regexp.MustCompile(`^(?P<isspam>True|False|Yes|No)\s;\s(?P<score>\-?[0-9\.]+)\s\/\s(?P<basescore>[0-9\.]+)`)
 	ruleRe       = regexp.MustCompile(`(?m)^\s*(?P<score>-?[0-9]+\.?[0-9]?)\s+(?P<name>[A-Z0-9\_]+)\s+(?P<desc>[^\s|-|\d]+.*(?:\n\s{2,}\S.*)?)$`)
+	noDigitRe    = regexp.MustCompile(`[^\d\-]`)
 )
 
 // A Client represents a Spamc client.
@@ -56,8 +57,6 @@ type Client struct {
 	connRetries        int
 	connSleep          time.Duration
 	cmdTimeout         time.Duration
-	cmdRetries         int
-	cmdSleep           time.Duration
 }
 
 // NewClient returns a new Spamc client.
@@ -80,7 +79,6 @@ func NewClient(network, address, user string, useCompression bool) (c *Client, e
 		user:           user,
 		useCompression: useCompression,
 		connSleep:      defaultSleep,
-		cmdSleep:       defaultSleep,
 	}
 	return
 }
@@ -162,25 +160,10 @@ func (c *Client) SetConnRetries(s int) {
 	c.connRetries = s
 }
 
-// SetCmdRetries sets the number of times
-// cmd is retried
-func (c *Client) SetCmdRetries(s int) {
-	if s < 0 {
-		s = 0
-	}
-	c.cmdRetries = s
-}
-
 // SetConnSleep sets the connection retry sleep
 // duration in seconds
 func (c *Client) SetConnSleep(s time.Duration) {
 	c.connSleep = s
-}
-
-// SetCmdSleep sets the cmd retry sleep duration
-// in seconds
-func (c *Client) SetCmdSleep(s time.Duration) {
-	c.cmdSleep = s
 }
 
 // Check requests the SPAMD service to check a message with a CHECK request.
@@ -229,16 +212,6 @@ func (c *Client) ReportIfSpam(m []byte) (rs *response.Response, err error) {
 // Symbols requests the SPAMD service to check a message with a
 // SYMBOLS request.
 func (c *Client) Symbols(m []byte) (rs *response.Response, err error) {
-	// for i := 0; i <= c.cmdRetries; i++ {
-	// 	rs, err = c.cmd(request.Symbols, request.NoAction, request.NoneType, m)
-	// 	if err == nil && rs.StatusCode.IsTemp() {
-	// 		if c.cmdRetries > 0 {
-	// 			time.Sleep(c.cmdSleep)
-	// 			continue
-	// 		}
-	// 	}
-	// 	break
-	// }
 	rs, err = c.cmd(request.Symbols, request.NoAction, request.NoneType, m)
 	return
 }
@@ -509,9 +482,9 @@ func (c *Client) headers(tc *textproto.Conn, rs *response.Response) (err error) 
 				}
 				return
 			}
-			if bytes.Equal(lineb, []byte("\r\n")) {
-				continue
-			}
+			// if bytes.Equal(lineb, []byte("\r\n")) {
+			// 	continue
+			// }
 			rs.Raw = append(rs.Raw, lineb...)
 		}
 		tp = textproto.NewReader(bufio.NewReader(bytes.NewReader(rs.Raw)))
@@ -664,5 +637,5 @@ func (c *Client) symbols(tc *textproto.Conn, rs *response.Response) (err error) 
 }
 
 func isASCIISpace(b byte) bool {
-	return b == ' ' || b == '\t'
+	return b == ' ' || b == '\t' || noDigitRe.Match([]byte{b})
 }
