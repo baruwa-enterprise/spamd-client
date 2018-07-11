@@ -70,8 +70,10 @@ func (m Method) UsesHeader(h header.Header) (b bool) {
 		if h == header.ContentLength {
 			b = true
 		}
-		if m == Tell && h == header.Remove || h == header.Set || h == header.MessageClass {
-			b = true
+		if m == Tell {
+			if h == header.Remove || h == header.Set || h == header.MessageClass {
+				b = true
+			}
 		}
 	}
 	return
