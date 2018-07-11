@@ -15,14 +15,14 @@ This project requires Go to be installed.
 The spamc client can be installed as follows
 
 ```console
-$ make build
-$ ./bin/spamc
+$ go get github.com/baruwa-enterprise/spamc/cmd/spamc
 ```
 
-Or
+Or by cloning the repo and then running
 
 ```console
-$ go get github.com/baruwa-enterprise/spamc/cmd/spamc
+$ make build
+$ ./bin/spamc
 ```
 
 ### Spamc library
