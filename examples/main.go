@@ -18,12 +18,30 @@ package main
 // Rules      []map[string]string
 
 import (
+	"fmt"
 	"log"
+	"strings"
+	"time"
 
 	"github.com/baruwa-enterprise/spamc"
 	"github.com/baruwa-enterprise/spamc/request"
 	"github.com/baruwa-enterprise/spamc/response"
+	flag "github.com/spf13/pflag"
 )
+
+var (
+	cfg *Config
+)
+
+// Config holds the configuration
+type Config struct {
+	Address        string
+	Port           int
+	UseTLS         bool
+	User           string
+	UseCompression bool
+	RootCA         string
+}
 
 func d(r *response.Response) {
 	// log.Println("===================================")
@@ -43,14 +61,40 @@ func d(r *response.Response) {
 	log.Println("===================================")
 }
 
+func init() {
+	cfg = &Config{}
+	flag.StringVarP(&cfg.Address, "host", "H", "192.168.1.14",
+		`Specify Spamd host to connect to.`)
+	flag.IntVarP(&cfg.Port, "port", "p", 783,
+		`In TCP/IP mode, connect to spamd server listening on given port`)
+	flag.BoolVarP(&cfg.UseTLS, "use-tls", "S", false,
+		`Use TLS.`)
+	flag.StringVarP(&cfg.User, "user", "u", "exim",
+		`User for spamd to process this message under.`)
+	flag.BoolVarP(&cfg.UseCompression, "use-compression", "z", false,
+		`Compress mail message sent to spamd.`)
+	flag.StringVarP(&cfg.RootCA, "root-ca", "r", "/Users/andrew/tmp/frontend-ca.pem",
+		`The CA certificate for verifying the TLS connection.`)
+}
+
+func parseAddr(a string, p int) (n string, h string) {
+	if strings.HasPrefix(a, "/") {
+		n = "unix"
+		h = a
+	} else {
+		n = "tcp"
+		if strings.Contains(a, ":") {
+			h = fmt.Sprintf("[%s]:%d", a, p)
+		} else {
+			h = fmt.Sprintf("%s:%d", a, p)
+		}
+	}
+	return
+}
+
 func main() {
+	network, address := parseAddr(cfg.Address, cfg.Port)
 	ch := make(chan bool)
-	// c, e := spamc.NewClient("unix", "/Users/andrew/tmp/spamd.sock", "", false)
-	// c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
-	// c, e := spamc.NewClient("tcp4", "192.168.1.12:783", "Debian-exim", true)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
 	m := []byte(`Date: Mon, 23 Jun 2015 11:40:36 -0400
 From: Gopher <from@example.com>
 To: Another Gopher <to@example.com>
@@ -64,21 +108,23 @@ My Workd
 
 ++++++++++++++
 `)
-	// var s bool
-	// s, err = c.Ping()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// log.Println("Pong =>", s)
-	// log.Println("===================================")
 	go func(m []byte) {
 		defer func() {
 			ch <- true
 		}()
-		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+		c, err := spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
 		if err != nil {
 			log.Println(err)
 			return
+		}
+		c.SetCmdTimeout(5 * time.Second)
+		if cfg.UseTLS {
+			err = c.SetRootCA(cfg.RootCA)
+			if err != nil {
+				log.Println("ERROR:", err)
+				return
+			}
+			c.EnableTLS()
 		}
 		r, e := c.Check(m)
 		if e != nil {
@@ -88,7 +134,7 @@ My Workd
 		d(r)
 	}(m)
 	go func(m []byte) {
-		c, err := spamc.NewClient("tcp4", "192.168.1.14:1000", "exim", true)
+		c, err := spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
 		defer func() {
 			ch <- true
 		}()
@@ -96,14 +142,16 @@ My Workd
 			log.Println("ERROR:", err)
 			return
 		}
-		c.EnableTLS()
-		// c.DisableTLSVerification()
-		c.EnableRawBody()
-		err = c.SetRootCA("/Users/andrew/tmp/frontend-ca.pem")
-		if err != nil {
-			log.Println("ERROR:", err)
-			return
+
+		if cfg.UseTLS {
+			err = c.SetRootCA(cfg.RootCA)
+			if err != nil {
+				log.Println("ERROR:", err)
+				return
+			}
+			c.EnableTLS()
 		}
+		c.EnableRawBody()
 		r, e := c.Headers(m)
 		if e != nil {
 			log.Println("ERROR:", e)
@@ -112,13 +160,21 @@ My Workd
 		d(r)
 	}(m)
 	go func(m []byte) {
-		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+		c, err := spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
 		defer func() {
 			ch <- true
 		}()
 		if err != nil {
 			log.Println(err)
 			return
+		}
+		if cfg.UseTLS {
+			err = c.SetRootCA(cfg.RootCA)
+			if err != nil {
+				log.Println("ERROR:", err)
+				return
+			}
+			c.EnableTLS()
 		}
 		c.EnableRawBody()
 		r, e := c.Process(m)
@@ -132,10 +188,18 @@ My Workd
 		defer func() {
 			ch <- true
 		}()
-		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+		c, err := spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
 		if err != nil {
 			log.Println(err)
 			return
+		}
+		if cfg.UseTLS {
+			err = c.SetRootCA(cfg.RootCA)
+			if err != nil {
+				log.Println("ERROR:", err)
+				return
+			}
+			c.EnableTLS()
 		}
 		c.EnableRawBody()
 		r, e := c.Report(m)
@@ -149,10 +213,18 @@ My Workd
 		defer func() {
 			ch <- true
 		}()
-		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+		c, err := spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
 		if err != nil {
 			log.Println(err)
 			return
+		}
+		if cfg.UseTLS {
+			err = c.SetRootCA(cfg.RootCA)
+			if err != nil {
+				log.Println("ERROR:", err)
+				return
+			}
+			c.EnableTLS()
 		}
 		c.EnableRawBody()
 		r, e := c.ReportIfSpam(m)
@@ -166,10 +238,18 @@ My Workd
 		defer func() {
 			ch <- true
 		}()
-		c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+		c, err := spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
 		if err != nil {
 			log.Println(err)
 			return
+		}
+		if cfg.UseTLS {
+			err = c.SetRootCA(cfg.RootCA)
+			if err != nil {
+				log.Println("ERROR:", err)
+				return
+			}
+			c.EnableTLS()
 		}
 		c.EnableRawBody()
 		r, e := c.Symbols(m)
@@ -180,11 +260,22 @@ My Workd
 		d(r)
 	}(m)
 	<-ch
-	c, err := spamc.NewClient("tcp4", "192.168.1.14:783", "exim", true)
+	c, err := spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+	if cfg.UseTLS {
+		err = c.SetRootCA(cfg.RootCA)
+		if err != nil {
+			log.Println("ERROR:", err)
+			return
+		}
+		c.EnableTLS()
+	}
+	// c.SetConnTimeout(2 * time.Second)
+	// c.SetCmdTimeout(2 * time.Second)
+	// c.SetConnRetries(5)
 	r, e := c.Tell(m, request.Ham, request.LearnAction)
 	if e != nil {
 		log.Println(e)
@@ -197,7 +288,7 @@ My Workd
 		return
 	}
 	d(r)
-	//
+
 	r, e = c.Tell(m, request.Spam, request.LearnAction)
 	if e != nil {
 		log.Println(e)
