@@ -14,3 +14,9 @@ go:
 
 install:
   - make get-deps
+
+script:
+  - go test ./
+  - go test ./header
+  - go test ./request
+  - go test ./response
