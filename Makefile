@@ -31,5 +31,8 @@ clean:
 	@test ! -e bin/${BIN_NAME} || rm bin/${BIN_NAME}
 
 test:
-	go test $(glide nv)
+	go test -coverprofile cp.out ./...
+
+test-coverage:
+	go tool cover -html=cp.out
 
