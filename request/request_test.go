@@ -55,6 +55,12 @@ var TestUsesHeaders = []UsesHeaderTestKey{
 	{Check, header.Set, false},
 	{Check, header.MessageClass, false},
 	{Skip, header.MessageClass, false},
+	{Tell, header.Compress, true},
+	{Tell, header.User, true},
+	{Tell, header.ContentLength, true},
+	{Tell, header.Remove, true},
+	{Tell, header.Set, true},
+	{Tell, header.MessageClass, true},
 }
 
 var TestMsgTypes = []MsgTypeTestKey{
