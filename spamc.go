@@ -53,7 +53,7 @@ type Client struct {
 	user               string
 	rootCA             string
 	useTLS             bool
-	InsecureSkipVerify bool
+	insecureSkipVerify bool
 	useCompression     bool
 	returnRawBody      bool
 	connTimeout        time.Duration
@@ -136,12 +136,12 @@ func (c *Client) SetRootCA(p string) (err error) {
 
 // EnableTLSVerification enables verification of the server certificate
 func (c *Client) EnableTLSVerification() {
-	c.InsecureSkipVerify = false
+	c.insecureSkipVerify = false
 }
 
 // DisableTLSVerification disables verification of the server certificate
 func (c *Client) DisableTLSVerification() {
-	c.InsecureSkipVerify = true
+	c.insecureSkipVerify = true
 }
 
 // SetConnTimeout sets the connection timeout
@@ -243,7 +243,7 @@ func (c *Client) Revoke(r io.Reader) (rs *response.Response, err error) {
 
 func (c *Client) tlsConfig() (conf *tls.Config) {
 	conf = &tls.Config{
-		InsecureSkipVerify: c.InsecureSkipVerify,
+		InsecureSkipVerify: c.insecureSkipVerify,
 		CipherSuites: []uint16{
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
