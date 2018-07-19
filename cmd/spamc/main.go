@@ -394,9 +394,9 @@ func usageErr(s string) {
 func parseAddr(a string, p int) (s string) {
 	i := net.ParseIP(a)
 	if i == nil {
-		s = fmt.Sprintf("%s:%s", a, strconv.Itoa(p))
+		s = fmt.Sprintf("%s:%d", a, p)
 	} else {
-		s = fmt.Sprintf("[%s]:%s", a, strconv.Itoa(p))
+		s = fmt.Sprintf("[%s]:%d", a, p)
 	}
 	return
 }
