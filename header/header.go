@@ -8,12 +8,17 @@
 package header
 
 const (
-	// Compress represents the compress header
+	// Compress represents the Compress header
 	Compress Header = iota
+	// User represents the User header
 	User
+	// ContentLength represents the Content-length header
 	ContentLength
+	// MessageClass represents the Message-Class header
 	MessageClass
+	// Remove represents the Remove header
 	Remove
+	// Set reprsents the Set header
 	Set
 )
 

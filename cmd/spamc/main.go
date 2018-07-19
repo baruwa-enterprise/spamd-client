@@ -9,7 +9,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -179,7 +178,8 @@ func usage() {
 
 func main() {
 	var err error
-	var line []byte
+	var m *os.File
+	var fi os.FileInfo
 	var u *user.User
 	var c *spamc.Client
 	var network, address string
@@ -268,18 +268,17 @@ func main() {
 		}
 	}
 
-	// Read std input
-	m := []byte{}
-	r := bufio.NewReader(os.Stdin)
-	for {
-		line, err = r.ReadBytes('\n')
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			log.Fatal(err)
-		}
-		m = append(m, line...)
+	m = os.Stdin
+	fi, err = m.Stat()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if fi.Size() == 0 {
+		usage()
+		return
+	}
+	if fi.Size() > cfg.MaxSize {
+		log.Fatalf("The file is larger than max allowed")
 	}
 
 	// Create spamc client instance
@@ -356,7 +355,7 @@ func main() {
 				if rs.StatusCode == response.ExOK {
 					success = true
 					fmt.Printf("%s", rs.Raw)
-					tp := textproto.NewReader(bufio.NewReader(bytes.NewReader(m)))
+					tp := textproto.NewReader(bufio.NewReader(m))
 					_, err = tp.ReadMIMEHeader()
 					if err == nil {
 						for {
@@ -403,7 +402,7 @@ func parseAddr(a string, p int) (s string) {
 // func check(c *spamc.Client, m []byte) (succeeded bool, code response.StatusCode) {
 // }
 
-func tell(c *spamc.Client, m []byte) (succeeded bool, code response.StatusCode) {
+func tell(c *spamc.Client, m io.Reader) (succeeded bool, code response.StatusCode) {
 	var err error
 	var h string
 	var l request.MsgType

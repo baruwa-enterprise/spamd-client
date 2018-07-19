@@ -14,22 +14,39 @@ import (
 )
 
 const (
-	ExOK    StatusCode = 0
+	// ExOK => EX_OK
+	ExOK StatusCode = 0
+	// ExUsage => EX_USAGE
 	ExUsage StatusCode = iota + 64
+	// ExDataErr => EX_DATAERR
 	ExDataErr
+	// ExNoInput => EX_NOINPUT
 	ExNoInput
+	// ExNpUser => EX_NOUSER
 	ExNpUser
+	// ExNoHost => EX_NOHOST
 	ExNoHost
+	// ExUnAvailable => EX_UNAVAILABLE
 	ExUnAvailable
+	// ExSoftware => EX_SOFTWARE
 	ExSoftware
+	// ExOSErr => EX_OSERR
 	ExOSErr
+	// ExOSFile => EX_OSFILE
 	ExOSFile
+	// ExCantCreat => EX_CANTCREAT
 	ExCantCreat
+	// ExIOErr => EX_IOERR
 	ExIOErr
+	// ExTempFail => EX_TEMPFAIL
 	ExTempFail
+	// ExProtocol => EX_PROTOCOL
 	ExProtocol
+	// ExNoPerm => EX_NOPERM
 	ExNoPerm
+	// ExConfig => EX_CONFIG
 	ExConfig
+	// ExTimeout => EX_TIMEOUT
 	ExTimeout
 )
 

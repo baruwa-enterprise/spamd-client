@@ -18,6 +18,7 @@ package main
 // Rules      []map[string]string
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"strings"
@@ -126,7 +127,8 @@ My Workd
 			}
 			c.EnableTLS()
 		}
-		r, e := c.Check(m)
+		ir := bytes.NewReader(m)
+		r, e := c.Check(ir)
 		if e != nil {
 			log.Println(e)
 			return
@@ -152,7 +154,8 @@ My Workd
 			c.EnableTLS()
 		}
 		c.EnableRawBody()
-		r, e := c.Headers(m)
+		ir := bytes.NewReader(m)
+		r, e := c.Headers(ir)
 		if e != nil {
 			log.Println("ERROR:", e)
 			return
@@ -177,7 +180,8 @@ My Workd
 			c.EnableTLS()
 		}
 		c.EnableRawBody()
-		r, e := c.Process(m)
+		ir := bytes.NewReader(m)
+		r, e := c.Process(ir)
 		if e != nil {
 			log.Println(e)
 			return
@@ -202,7 +206,8 @@ My Workd
 			c.EnableTLS()
 		}
 		c.EnableRawBody()
-		r, e := c.Report(m)
+		ir := bytes.NewReader(m)
+		r, e := c.Report(ir)
 		if e != nil {
 			log.Println(e)
 			return
@@ -227,7 +232,8 @@ My Workd
 			c.EnableTLS()
 		}
 		c.EnableRawBody()
-		r, e := c.ReportIfSpam(m)
+		ir := bytes.NewReader(m)
+		r, e := c.ReportIfSpam(ir)
 		if e != nil {
 			log.Println(e)
 			return
@@ -252,7 +258,8 @@ My Workd
 			c.EnableTLS()
 		}
 		c.EnableRawBody()
-		r, e := c.Symbols(m)
+		ir := bytes.NewReader(m)
+		r, e := c.Symbols(ir)
 		if e != nil {
 			log.Println(e)
 			return
@@ -276,26 +283,29 @@ My Workd
 	// c.SetConnTimeout(2 * time.Second)
 	// c.SetCmdTimeout(2 * time.Second)
 	// c.SetConnRetries(5)
-	r, e := c.Tell(m, request.Ham, request.LearnAction)
+	ir := bytes.NewReader(m)
+	r, e := c.Tell(ir, request.Ham, request.LearnAction)
 	if e != nil {
 		log.Println(e)
 		return
 	}
 	d(r)
-	r, e = c.Tell(m, request.Ham, request.ForgetAction)
+	ir.Reset(m)
+	r, e = c.Tell(ir, request.Ham, request.ForgetAction)
 	if e != nil {
 		log.Println(e)
 		return
 	}
 	d(r)
-
-	r, e = c.Tell(m, request.Spam, request.LearnAction)
+	ir.Reset(m)
+	r, e = c.Tell(ir, request.Spam, request.LearnAction)
 	if e != nil {
 		log.Println(e)
 		return
 	}
 	d(r)
-	r, e = c.Tell(m, request.Spam, request.ForgetAction)
+	ir.Reset(m)
+	r, e = c.Tell(ir, request.Spam, request.ForgetAction)
 	if e != nil {
 		log.Println(e)
 		return

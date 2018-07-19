@@ -12,28 +12,45 @@ import (
 )
 
 const (
+	// Check represents the CHECK Method
 	Check Method = iota
+	// Headers represents the HEADERS Method
 	Headers
+	// Ping represents the PING Method
 	Ping
+	// Process represents the PROCESS Method
 	Process
+	// Report represents the REPORT Method
 	Report
+	// ReportIfSpam represents the REPORT_IFSPAM Method
 	ReportIfSpam
+	// Skip represents the SKIP Method
 	Skip
+	// Symbols represents the SYMBOLS Method
 	Symbols
+	// Tell represents the TELL Method
 	Tell
 )
 
 const (
+	// NoAction is NOOP action
 	NoAction TellAction = iota
+	// LearnAction is LEARN action
 	LearnAction
+	// ForgetAction is FORGET action
 	ForgetAction
+	// ReportAction is REPORT action
 	ReportAction
+	// RevokeAction is REVOKE action
 	RevokeAction
 )
 
 const (
+	// NoneType is non type msg
 	NoneType MsgType = iota
+	// Ham is a ham msg type
 	Ham
+	// Spam is a spam msg typ
 	Spam
 )
 

@@ -30,6 +30,7 @@ import (
 )
 
 const (
+	// ClientVersion supported protocol version
 	ClientVersion        = "1.5"
 	maxCertSize    int64 = 6000
 	defaultTimeout       = 15 * time.Second
@@ -167,15 +168,15 @@ func (c *Client) SetConnSleep(s time.Duration) {
 }
 
 // Check requests the SPAMD service to check a message with a CHECK request.
-func (c *Client) Check(m []byte) (rs *response.Response, err error) {
-	rs, err = c.cmd(request.Check, request.NoAction, request.NoneType, m)
+func (c *Client) Check(r io.Reader) (rs *response.Response, err error) {
+	rs, err = c.cmd(request.Check, request.NoAction, request.NoneType, r)
 	return
 }
 
 // Headers requests the SPAMD service to check a message with a
 // HEADERS request.
-func (c *Client) Headers(m []byte) (rs *response.Response, err error) {
-	rs, err = c.cmd(request.Headers, request.NoAction, request.NoneType, m)
+func (c *Client) Headers(r io.Reader) (rs *response.Response, err error) {
+	rs, err = c.cmd(request.Headers, request.NoAction, request.NoneType, r)
 	return
 }
 
@@ -190,51 +191,51 @@ func (c *Client) Ping() (s bool, err error) {
 
 // Process requests the SPAMD service to check a message with a
 // PROCESS request.
-func (c *Client) Process(m []byte) (rs *response.Response, err error) {
-	rs, err = c.cmd(request.Process, request.NoAction, request.NoneType, m)
+func (c *Client) Process(r io.Reader) (rs *response.Response, err error) {
+	rs, err = c.cmd(request.Process, request.NoAction, request.NoneType, r)
 	return
 }
 
 // Report requests the SPAMD service to check a message with a
 // REPORT request.
-func (c *Client) Report(m []byte) (rs *response.Response, err error) {
-	rs, err = c.cmd(request.Report, request.NoAction, request.NoneType, m)
+func (c *Client) Report(r io.Reader) (rs *response.Response, err error) {
+	rs, err = c.cmd(request.Report, request.NoAction, request.NoneType, r)
 	return
 }
 
 // ReportIfSpam requests the SPAMD service to check a message with a
 // REPORT_IFSPAM request.
-func (c *Client) ReportIfSpam(m []byte) (rs *response.Response, err error) {
-	rs, err = c.cmd(request.ReportIfSpam, request.NoAction, request.NoneType, m)
+func (c *Client) ReportIfSpam(r io.Reader) (rs *response.Response, err error) {
+	rs, err = c.cmd(request.ReportIfSpam, request.NoAction, request.NoneType, r)
 	return
 }
 
 // Symbols requests the SPAMD service to check a message with a
 // SYMBOLS request.
-func (c *Client) Symbols(m []byte) (rs *response.Response, err error) {
-	rs, err = c.cmd(request.Symbols, request.NoAction, request.NoneType, m)
+func (c *Client) Symbols(r io.Reader) (rs *response.Response, err error) {
+	rs, err = c.cmd(request.Symbols, request.NoAction, request.NoneType, r)
 	return
 }
 
 // Tell instructs the SPAMD service to to mark the message
-func (c *Client) Tell(m []byte, l request.MsgType, a request.TellAction) (rs *response.Response, err error) {
+func (c *Client) Tell(r io.Reader, l request.MsgType, a request.TellAction) (rs *response.Response, err error) {
 	if l == request.NoneType {
 		err = fmt.Errorf("Set the correct learn type")
 		return
 	}
-	rs, err = c.cmd(request.Tell, a, l, m)
+	rs, err = c.cmd(request.Tell, a, l, r)
 	return
 }
 
 // Learn instructs the SPAMD service to learn tokens from a message
-func (c *Client) Learn(m []byte, l request.MsgType) (rs *response.Response, err error) {
-	rs, err = c.Tell(m, l, request.LearnAction)
+func (c *Client) Learn(r io.Reader, l request.MsgType) (rs *response.Response, err error) {
+	rs, err = c.Tell(r, l, request.LearnAction)
 	return
 }
 
 // Revoke instructs the SPAMD service to revoke tokens from a message
-func (c *Client) Revoke(m []byte) (rs *response.Response, err error) {
-	rs, err = c.Tell(m, request.Ham, request.RevokeAction)
+func (c *Client) Revoke(r io.Reader) (rs *response.Response, err error) {
+	rs, err = c.Tell(r, request.Ham, request.RevokeAction)
 	return
 }
 
@@ -260,7 +261,7 @@ func (c *Client) tlsConfig() (conf *tls.Config) {
 	return
 }
 
-func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType, msg []byte) (rs *response.Response, err error) {
+func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType, r io.Reader) (rs *response.Response, err error) {
 	var line string
 	var conn net.Conn
 	var tc *textproto.Conn
@@ -285,8 +286,28 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 
 	// Send the headers
 	// Content-length needs to be send first
-	if msg != nil {
-		tc.PrintfLine("Content-length: %s", strconv.Itoa(len(msg)+2))
+	if r != nil {
+		var clen int64
+		var stat os.FileInfo
+		switch v := r.(type) {
+		case *bytes.Buffer:
+			clen = int64(v.Len())
+		case *bytes.Reader:
+			clen = int64(v.Len())
+		case *strings.Reader:
+			clen = int64(v.Len())
+		case *os.File:
+			stat, err = v.Stat()
+			if err != nil {
+				return
+			}
+			clen = stat.Size()
+		default:
+			err = fmt.Errorf("The content length could not be determined")
+			return
+		}
+		clen += 2
+		tc.PrintfLine("Content-length: %d", clen)
 	}
 	// Compress
 	if c.useCompression && rq.UsesHeader(header.Compress) {
@@ -316,22 +337,17 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 
 	// Send the newline separating headers and body
 	tc.PrintfLine("")
-	if msg != nil {
+	if r != nil {
 		// Send the body
 		if c.useCompression {
-			var buf bytes.Buffer
-			w := zlib.NewWriter(&buf)
-			_, err = w.Write(msg)
+			w := zlib.NewWriter(tc.Writer.W)
+			_, err = io.Copy(w, r)
 			if err != nil {
 				return
 			}
 			w.Close()
-			_, err = tc.Writer.W.Write(buf.Bytes())
-			if err != nil {
-				return
-			}
 		} else {
-			_, err = tc.Writer.W.Write(msg)
+			_, err = io.Copy(tc.Writer.W, r)
 			if err != nil {
 				return
 			}
@@ -482,9 +498,6 @@ func (c *Client) headers(tc *textproto.Conn, rs *response.Response) (err error) 
 				}
 				return
 			}
-			// if bytes.Equal(lineb, []byte("\r\n")) {
-			// 	continue
-			// }
 			rs.Raw = append(rs.Raw, lineb...)
 		}
 		tp = textproto.NewReader(bufio.NewReader(bytes.NewReader(rs.Raw)))
