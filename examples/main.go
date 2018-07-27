@@ -21,8 +21,11 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
+	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -33,7 +36,8 @@ import (
 )
 
 var (
-	cfg *Config
+	cfg     *Config
+	cmdName string
 )
 
 // Config holds the configuration
@@ -66,6 +70,7 @@ func d(r *response.Response) {
 
 func init() {
 	cfg = &Config{}
+	cmdName = path.Base(os.Args[0])
 	flag.StringVarP(&cfg.Address, "host", "H", "192.168.1.14",
 		`Specify Spamd host to connect to.`)
 	flag.IntVarP(&cfg.Port, "port", "p", 783,
@@ -95,7 +100,17 @@ func parseAddr(a string, p int) (n string, h string) {
 	return
 }
 
+func usage() {
+	fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", cmdName)
+	fmt.Fprint(os.Stderr, "\nOptions:\n")
+	flag.PrintDefaults()
+}
+
 func main() {
+	flag.Usage = usage
+	flag.ErrHelp = errors.New("")
+	flag.CommandLine.SortFlags = false
+	flag.Parse()
 	network, address := parseAddr(cfg.Address, cfg.Port)
 	ch := make(chan bool)
 	m := []byte(`Date: Mon, 23 Jun 2015 11:40:36 -0400
