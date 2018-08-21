@@ -247,6 +247,9 @@ func (c *Client) Revoke(r io.Reader) (rs *response.Response, err error) {
 }
 
 func (c *Client) tlsConfig() (conf *tls.Config) {
+	var ca []byte
+	var err error
+
 	conf = &tls.Config{
 		InsecureSkipVerify: c.insecureSkipVerify,
 		CipherSuites: []uint16{
@@ -256,15 +259,16 @@ func (c *Client) tlsConfig() (conf *tls.Config) {
 			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
 		},
 	}
+
 	if c.rootCA != "" {
-		ca, err := ioutil.ReadFile(c.rootCA)
-		if err != nil {
+		if ca, err = ioutil.ReadFile(c.rootCA); err != nil {
 			return
 		}
 		p := x509.NewCertPool()
 		p.AppendCertsFromPEM(ca)
 		conf.RootCAs = p
 	}
+
 	return
 }
 
@@ -274,8 +278,7 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 	var tc *textproto.Conn
 
 	// Setup the socket connection
-	conn, err = c.dial()
-	if err != nil {
+	if conn, err = c.dial(); err != nil {
 		return
 	}
 
@@ -304,8 +307,7 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 		case *strings.Reader:
 			clen = int64(v.Len())
 		case *os.File:
-			stat, err = v.Stat()
-			if err != nil {
+			if stat, err = v.Stat(); err != nil {
 				tc.EndRequest(id)
 				return
 			}
@@ -350,15 +352,13 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 		// Send the body
 		if c.useCompression {
 			w := zlib.NewWriter(tc.Writer.W)
-			_, err = io.Copy(w, r)
-			if err != nil {
+			if _, err = io.Copy(w, r); err != nil {
 				tc.EndRequest(id)
 				return
 			}
 			w.Close()
 		} else {
-			_, err = io.Copy(tc.Writer.W, r)
-			if err != nil {
+			if _, err = io.Copy(tc.Writer.W, r); err != nil {
 				tc.EndRequest(id)
 				return
 			}
@@ -410,8 +410,7 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 	}
 
 	// Read the headers
-	rs.Headers, err = tc.ReadMIMEHeader()
-	if err != nil {
+	if rs.Headers, err = tc.ReadMIMEHeader(); err != nil {
 		return
 	}
 
@@ -427,8 +426,7 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 		request.ReportIfSpam,
 		request.Symbols:
 		// Process spam header
-		err = c.spamHeader(rs)
-		if err != nil {
+		if err = c.spamHeader(rs); err != nil {
 			return
 		}
 		// HEADERS, PROCESS
@@ -481,13 +479,11 @@ func (c *Client) spamHeader(rs *response.Response) (err error) {
 	if tv == "true" || tv == "yes" {
 		rs.IsSpam = true
 	}
-	rs.Score, err = strconv.ParseFloat(m[2], 64)
-	if err != nil {
+	if rs.Score, err = strconv.ParseFloat(m[2], 64); err != nil {
 		err = fmt.Errorf("Invalid Server Response: %s", err)
 		return
 	}
-	rs.BaseScore, err = strconv.ParseFloat(m[3], 64)
-	if err != nil {
+	if rs.BaseScore, err = strconv.ParseFloat(m[3], 64); err != nil {
 		err = fmt.Errorf("Invalid Server Response: %s", err)
 		return
 	}
@@ -500,8 +496,7 @@ func (c *Client) headers(tc *textproto.Conn, rs *response.Response) (err error) 
 	var tp *textproto.Reader
 	if c.returnRawBody {
 		for {
-			lineb, err = tc.R.ReadBytes('\n')
-			if err != nil {
+			if lineb, err = tc.R.ReadBytes('\n'); err != nil {
 				if err == io.EOF {
 					err = nil
 					rs.Raw = rs.Raw[1:]
@@ -565,8 +560,7 @@ func (c *Client) report(tc *textproto.Conn, rs *response.Response) (err error) {
 	var f, s bool
 	var lineb []byte
 	for {
-		lineb, err = tc.R.ReadBytes('\n')
-		if err != nil {
+		if lineb, err = tc.R.ReadBytes('\n'); err != nil {
 			if err == io.EOF {
 				err = nil
 				rs.Raw = rs.Raw[1:]
@@ -630,8 +624,7 @@ func (c *Client) report(tc *textproto.Conn, rs *response.Response) (err error) {
 func (c *Client) symbols(tc *textproto.Conn, rs *response.Response) (err error) {
 	var f bool
 	var lineb []byte
-	lineb, err = tc.R.ReadBytes('\n')
-	if err != nil {
+	if lineb, err = tc.R.ReadBytes('\n'); err != nil {
 		if err == io.EOF {
 			err = nil
 		} else {
