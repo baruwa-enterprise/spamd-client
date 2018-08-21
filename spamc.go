@@ -306,11 +306,13 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 		case *os.File:
 			stat, err = v.Stat()
 			if err != nil {
+				tc.EndRequest(id)
 				return
 			}
 			clen = stat.Size()
 		default:
 			err = fmt.Errorf("The content length could not be determined")
+			tc.EndRequest(id)
 			return
 		}
 		clen += 2
@@ -350,12 +352,14 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 			w := zlib.NewWriter(tc.Writer.W)
 			_, err = io.Copy(w, r)
 			if err != nil {
+				tc.EndRequest(id)
 				return
 			}
 			w.Close()
 		} else {
 			_, err = io.Copy(tc.Writer.W, r)
 			if err != nil {
+				tc.EndRequest(id)
 				return
 			}
 		}
