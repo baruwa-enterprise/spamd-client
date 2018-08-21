@@ -76,6 +76,11 @@ func NewClient(network, address, user string, useCompression bool) (c *Client, e
 		}
 	}
 
+	if network != "unix" && network != "unixpacket" && network != "tcp" && network != "tcp4" && network != "tcp6" {
+		err = fmt.Errorf("Protocol: %s is not supported", network)
+		return
+	}
+
 	c = &Client{
 		network:        network,
 		address:        address,
