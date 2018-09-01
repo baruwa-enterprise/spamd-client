@@ -156,8 +156,6 @@ func NewResponse(m request.Method) *Response {
 		RequestMethod: m,
 		Headers:       make(textproto.MIMEHeader),
 		Msg:           NewMsg(),
-		Rules:         make([]map[string]string, 1),
-		Raw:           make([]byte, 1),
 	}
 }
 
@@ -171,6 +169,5 @@ type Msg struct {
 func NewMsg() *Msg {
 	return &Msg{
 		Header: make(textproto.MIMEHeader),
-		Body:   make([]byte, 1),
 	}
 }

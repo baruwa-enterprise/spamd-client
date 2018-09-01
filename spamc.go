@@ -33,10 +33,19 @@ import (
 
 const (
 	// ClientVersion supported protocol version
-	ClientVersion        = "1.5"
-	maxCertSize    int64 = 6000
-	defaultTimeout       = 15 * time.Second
-	defaultSleep         = 1 * time.Second
+	ClientVersion             = "1.5"
+	maxCertSize         int64 = 6000
+	defaultTimeout            = 15 * time.Second
+	defaultSleep              = 1 * time.Second
+	defaultCmdTimeout         = 1 * time.Minute
+	defaultSock               = "/var/run/spamassassin/spamd.sock"
+	invalidRespErr            = "Invalid server response: %s"
+	unsupportedProtoErr       = "Protocol: %s is not supported"
+	unixSockErr               = "The unix socket: %s does not exist"
+	noSizeErr                 = "The content length could not be determined"
+	responseReadErr           = "Failed to read server response"
+	invalidLearnTypeErr       = "Set the correct learn type"
+	rootCASizeErr             = "The RootCA file: %s is larger than max allowed: %d"
 )
 
 var (
@@ -66,18 +75,18 @@ type Client struct {
 func NewClient(network, address, user string, useCompression bool) (c *Client, err error) {
 	if network == "" && address == "" {
 		network = "unix"
-		address = "/var/run/spamassassin/spamd.sock"
+		address = defaultSock
 	}
 
 	if network == "unix" || network == "unixpacket" {
 		if _, err = os.Stat(address); os.IsNotExist(err) {
-			err = fmt.Errorf("The unix socket: %s does not exist", address)
+			err = fmt.Errorf(unixSockErr, address)
 			return
 		}
 	}
 
 	if network != "unix" && network != "unixpacket" && network != "tcp" && network != "tcp4" && network != "tcp6" {
-		err = fmt.Errorf("Protocol: %s is not supported", network)
+		err = fmt.Errorf(unsupportedProtoErr, network)
 		return
 	}
 
@@ -87,6 +96,8 @@ func NewClient(network, address, user string, useCompression bool) (c *Client, e
 		user:           user,
 		useCompression: useCompression,
 		connSleep:      defaultSleep,
+		connTimeout:    defaultTimeout,
+		cmdTimeout:     defaultCmdTimeout,
 	}
 	return
 }
@@ -131,7 +142,7 @@ func (c *Client) SetRootCA(p string) (err error) {
 	var s os.FileInfo
 	if s, err = os.Stat(p); os.IsNotExist(err) || s.Size() > maxCertSize {
 		if err == nil {
-			err = fmt.Errorf("The RootCA file: %s is larger than max allowed: %d", p, maxCertSize)
+			err = fmt.Errorf(rootCASizeErr, p, maxCertSize)
 		}
 		return
 	}
@@ -227,7 +238,7 @@ func (c *Client) Symbols(r io.Reader) (rs *response.Response, err error) {
 // Tell instructs the SPAMD service to to mark the message
 func (c *Client) Tell(r io.Reader, l request.MsgType, a request.TellAction) (rs *response.Response, err error) {
 	if l == request.NoneType {
-		err = fmt.Errorf("Set the correct learn type")
+		err = fmt.Errorf(invalidLearnTypeErr)
 		return
 	}
 	rs, err = c.cmd(request.Tell, a, l, r)
@@ -313,7 +324,7 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 			}
 			clen = stat.Size()
 		default:
-			err = fmt.Errorf("The content length could not be determined")
+			err = fmt.Errorf(noSizeErr)
 			tc.EndRequest(id)
 			return
 		}
@@ -379,14 +390,14 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 	line, err = tc.ReadLine()
 	if err != nil {
 		if err == io.EOF {
-			err = fmt.Errorf("Failed to read server response")
+			err = fmt.Errorf(responseReadErr)
 		}
 		return
 	}
 
 	m := responseRe.FindStringSubmatch(line)
 	if m == nil {
-		err = fmt.Errorf("Invalid Server Response: %s", line)
+		err = fmt.Errorf(invalidRespErr, line)
 		return
 	}
 
@@ -472,7 +483,7 @@ func (c *Client) spamHeader(rs *response.Response) (err error) {
 	line := rs.Headers.Get("Spam")
 	m := spamHeaderRe.FindStringSubmatch(line)
 	if m == nil {
-		err = fmt.Errorf("Invalid Server Response: %s", line)
+		err = fmt.Errorf(invalidRespErr, line)
 		return
 	}
 	tv := strings.ToLower(m[1])
@@ -480,18 +491,18 @@ func (c *Client) spamHeader(rs *response.Response) (err error) {
 		rs.IsSpam = true
 	}
 	if rs.Score, err = strconv.ParseFloat(m[2], 64); err != nil {
-		err = fmt.Errorf("Invalid Server Response: %s", err)
+		err = fmt.Errorf(invalidRespErr, err)
 		return
 	}
 	if rs.BaseScore, err = strconv.ParseFloat(m[3], 64); err != nil {
-		err = fmt.Errorf("Invalid Server Response: %s", err)
+		err = fmt.Errorf(invalidRespErr, err)
 		return
 	}
 	return
 }
 
 func (c *Client) headers(tc *textproto.Conn, rs *response.Response) (err error) {
-	var f, s bool
+	var s bool
 	var lineb []byte
 	var tp *textproto.Reader
 	if c.returnRawBody {
@@ -499,7 +510,6 @@ func (c *Client) headers(tc *textproto.Conn, rs *response.Response) (err error) 
 			if lineb, err = tc.R.ReadBytes('\n'); err != nil {
 				if err == io.EOF {
 					err = nil
-					rs.Raw = rs.Raw[1:]
 					break
 				}
 				return
@@ -526,7 +536,6 @@ func (c *Client) headers(tc *textproto.Conn, rs *response.Response) (err error) 
 		if err != nil {
 			if err == io.EOF {
 				err = nil
-				rs.Msg.Body = rs.Msg.Body[1:]
 			}
 			return
 		}
@@ -541,12 +550,8 @@ func (c *Client) headers(tc *textproto.Conn, rs *response.Response) (err error) 
 				rd["score"] = string(mb[1])
 				rd["name"] = string(mb[2])
 				rd["description"] = string(mb[3])
-				if !f {
-					rs.Rules[0] = rd
-					f = true
-				} else {
-					rs.Rules = append(rs.Rules, rd)
-				}
+
+				rs.Rules = append(rs.Rules, rd)
 			}
 		}
 		if bytes.Equal(lineb, []byte("\r\n")) {
@@ -557,13 +562,12 @@ func (c *Client) headers(tc *textproto.Conn, rs *response.Response) (err error) 
 }
 
 func (c *Client) report(tc *textproto.Conn, rs *response.Response) (err error) {
-	var f, s bool
+	var s bool
 	var lineb []byte
 	for {
 		if lineb, err = tc.R.ReadBytes('\n'); err != nil {
 			if err == io.EOF {
 				err = nil
-				rs.Raw = rs.Raw[1:]
 			}
 			return
 		}
@@ -604,7 +608,7 @@ func (c *Client) report(tc *textproto.Conn, rs *response.Response) (err error) {
 
 		mb := ruleRe.FindSubmatch(bytes.TrimRight(lineb, "\n"))
 		if mb == nil {
-			err = fmt.Errorf("Invalid Server Response: %s", lineb)
+			err = fmt.Errorf(invalidRespErr, lineb)
 			return
 		}
 
@@ -612,17 +616,12 @@ func (c *Client) report(tc *textproto.Conn, rs *response.Response) (err error) {
 		rd["score"] = string(mb[1])
 		rd["name"] = string(mb[2])
 		rd["description"] = string(mb[3])
-		if !f {
-			rs.Rules[0] = rd
-			f = true
-		} else {
-			rs.Rules = append(rs.Rules, rd)
-		}
+
+		rs.Rules = append(rs.Rules, rd)
 	}
 }
 
 func (c *Client) symbols(tc *textproto.Conn, rs *response.Response) (err error) {
-	var f bool
 	var lineb []byte
 	if lineb, err = tc.R.ReadBytes('\n'); err != nil {
 		if err == io.EOF {
@@ -634,21 +633,15 @@ func (c *Client) symbols(tc *textproto.Conn, rs *response.Response) (err error) 
 
 	if c.returnRawBody {
 		rs.Raw = append(rs.Raw, lineb...)
-		rs.Raw = rs.Raw[1:]
 	}
 
-	f = false
 	for _, rn := range bytes.Split(lineb, []byte(",")) {
 		rd := make(map[string]string)
 		rd["score"] = ""
 		rd["name"] = string(rn)
 		rd["description"] = ""
-		if !f {
-			rs.Rules[0] = rd
-			f = true
-		} else {
-			rs.Rules = append(rs.Rules, rd)
-		}
+
+		rs.Rules = append(rs.Rules, rd)
 	}
 	return
 }
