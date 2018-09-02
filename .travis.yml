@@ -1,8 +1,8 @@
 language: go
 sudo: required
 env:
-  - DEP_VERSION="0.4.1" SPAMD_NETWORK="unix" SPAMD_ADDRESS="/var/run/spamd.sock" SPAMD_USER="Debian-exim"
-  - DEP_VERSION="0.4.1" SPAMD_NETWORK="tcp4" SPAMD_ADDRESS="127.0.0.1:783" SPAMD_USER="Debian-exim"
+  - DEP_VERSION="0.4.1" SPAMD_NETWORK="unix" SPAMD_ADDRESS="/var/run/spamd.sock" SPAMD_USER="debian-spamd"
+  - DEP_VERSION="0.4.1" SPAMD_NETWORK="tcp4" SPAMD_ADDRESS="127.0.0.1:783" SPAMD_USER="debian-spamd"
 
 before_install:
   - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
@@ -15,11 +15,8 @@ before_install:
   - sudo apt-get install -f
   - echo 'ENABLED=1' | sudo tee -a /etc/default/spamassassin
   - echo 'bayes_path /var/lib/spamassassin/db/bayes' | sudo tee -a /etc/spamassassin/local.cf
-  - echo 'OPTIONS="--create-prefs --max-children 5 --helper-home-dir=/var/lib/spamassassin --listen=127.0.0.1 --socketpath=/var/run/spamd.sock --socketmode=0777 -d -l -m5"' | sudo tee -a /etc/default/spamassassin
-  - wget -O /tmp/bayesian.database.gz http://artinvoice.hu/spams/bayesian.database.gz
-  - gunzip /tmp/bayesian.database.gz
-  - sudo -u debian-spamd sa-learn --restore /tmp/bayesian.database
-  - rm -rf /tmp/bayesian.database
+  - echo 'OPTIONS="--max-children 5 --helper-home-dir=/var/lib/spamassassin --listen=127.0.0.1 --socketpath=/var/run/spamd.sock --socketmode=0777 -d -l -m5"' | sudo tee -a /etc/default/spamassassin
+  - sudo -u debian-spamd sa-learn --restore ./examples/data/bayes-db.txt
   - sudo service spamassassin start
 
 go:
