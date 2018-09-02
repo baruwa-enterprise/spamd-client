@@ -296,6 +296,8 @@ func TestPing(t *testing.T) {
 		if !s {
 			t.Error("Ping failed")
 		}
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
@@ -326,6 +328,8 @@ func TestIOReader(t *testing.T) {
 		if e.Error() != noSizeErr {
 			t.Errorf("Got %s want %s", e, noSizeErr)
 		}
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
@@ -350,40 +354,23 @@ func TestCheck(t *testing.T) {
 		c.DisableCompression()
 		check(t, c, th, 1, 0, 0, false)
 		check(t, c, th, 1, 0, 0, true)
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
 func check(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
 	var ir io.Reader
-	fn := getFn(isspam)
-	f, e := os.Open(fn)
+	f, e := getFile(isspam)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
 	defer f.Close()
 	for _, testtype := range ioTests {
 		f.Seek(0, 0)
-		switch testtype {
-		case StringTest:
-			msgb, e := ioutil.ReadAll(f)
-			if e != nil {
-				t.Fatalf("Unexpected error: %s", e)
-			}
-			ir = strings.NewReader(string(msgb))
-		case BytesTest:
-			msgb, e := ioutil.ReadAll(f)
-			if e != nil {
-				t.Fatalf("Unexpected error: %s", e)
-			}
-			ir = bytes.NewReader(msgb)
-		case BufferTest:
-			msgb, e := ioutil.ReadAll(f)
-			if e != nil {
-				t.Fatalf("Unexpected error: %s", e)
-			}
-			ir = bytes.NewBuffer(msgb)
-		case FileTest:
-			ir = f
+		ir, e = getReader(f, testtype)
+		if e != nil {
+			t.Fatalf("Unexpected error: %s", e)
 		}
 		//
 		r, e := c.Check(ir)
@@ -421,40 +408,23 @@ func TestHeaders(t *testing.T) {
 		}
 		headers(t, c, th, 2, 0, 0, false, true)
 		headers(t, c, th, 2, 0, 0, true, false)
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
 func headers(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam, rawbody bool) {
 	var ir io.Reader
-	fn := getFn(isspam)
-	f, e := os.Open(fn)
+	f, e := getFile(isspam)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
 	defer f.Close()
 	for _, testtype := range ioTests {
 		f.Seek(0, 0)
-		switch testtype {
-		case StringTest:
-			msgb, e := ioutil.ReadAll(f)
-			if e != nil {
-				t.Fatalf("Unexpected error: %s", e)
-			}
-			ir = strings.NewReader(string(msgb))
-		case BytesTest:
-			msgb, e := ioutil.ReadAll(f)
-			if e != nil {
-				t.Fatalf("Unexpected error: %s", e)
-			}
-			ir = bytes.NewReader(msgb)
-		case BufferTest:
-			msgb, e := ioutil.ReadAll(f)
-			if e != nil {
-				t.Fatalf("Unexpected error: %s", e)
-			}
-			ir = bytes.NewBuffer(msgb)
-		case FileTest:
-			ir = f
+		ir, e = getReader(f, testtype)
+		if e != nil {
+			t.Fatalf("Unexpected error: %s", e)
 		}
 		//
 		if rawbody {
@@ -503,40 +473,23 @@ func TestProcess(t *testing.T) {
 		}
 		process(t, c, th, 2, 0, 0, false)
 		process(t, c, th, 2, 0, 0, true)
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
 func process(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
 	var ir io.Reader
-	fn := getFn(isspam)
-	f, e := os.Open(fn)
+	f, e := getFile(isspam)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
 	defer f.Close()
 	for _, testtype := range ioTests {
 		f.Seek(0, 0)
-		switch testtype {
-		case StringTest:
-			msgb, e := ioutil.ReadAll(f)
-			if e != nil {
-				t.Fatalf("Unexpected error: %s", e)
-			}
-			ir = strings.NewReader(string(msgb))
-		case BytesTest:
-			msgb, e := ioutil.ReadAll(f)
-			if e != nil {
-				t.Fatalf("Unexpected error: %s", e)
-			}
-			ir = bytes.NewReader(msgb)
-		case BufferTest:
-			msgb, e := ioutil.ReadAll(f)
-			if e != nil {
-				t.Fatalf("Unexpected error: %s", e)
-			}
-			ir = bytes.NewBuffer(msgb)
-		case FileTest:
-			ir = f
+		ir, e = getReader(f, testtype)
+		if e != nil {
+			t.Fatalf("Unexpected error: %s", e)
 		}
 		//
 		r, e := c.Process(ir)
@@ -580,18 +533,17 @@ func TestReport(t *testing.T) {
 		}
 		report(t, c, th, 2, 0, 0, false, true)
 		report(t, c, th, 2, 0, 0, true, false)
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
 func report(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam, rawbody bool) {
-	var ir io.Reader
-	fn := getFn(isspam)
-	f, e := os.Open(fn)
+	ir, e := getFile(isspam)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
-	defer f.Close()
-	ir = f
+	defer ir.Close()
 	if rawbody {
 		c.EnableRawBody()
 	} else {
@@ -637,18 +589,17 @@ func TestReportIfSpam(t *testing.T) {
 		}
 		reportifspam(t, c, th, 2, 0, 0, false)
 		reportifspam(t, c, th, 2, 0, 0, true)
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
 func reportifspam(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
-	var ir io.Reader
-	fn := getFn(isspam)
-	f, e := os.Open(fn)
+	ir, e := getFile(isspam)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
-	defer f.Close()
-	ir = f
+	defer ir.Close()
 	r, e := c.ReportIfSpam(ir)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
@@ -689,40 +640,23 @@ func TestSymbols(t *testing.T) {
 		}
 		symbols(t, c, th, 2, 0, 0, false, true)
 		symbols(t, c, th, 2, 0, 0, true, false)
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
 func symbols(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam, rawbody bool) {
 	var ir io.Reader
-	fn := getFn(isspam)
-	f, e := os.Open(fn)
+	f, e := getFile(isspam)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
 	defer f.Close()
 	for _, testtype := range ioTests {
 		f.Seek(0, 0)
-		switch testtype {
-		case StringTest:
-			msgb, e := ioutil.ReadAll(f)
-			if e != nil {
-				t.Fatalf("Unexpected error: %s", e)
-			}
-			ir = strings.NewReader(string(msgb))
-		case BytesTest:
-			msgb, e := ioutil.ReadAll(f)
-			if e != nil {
-				t.Fatalf("Unexpected error: %s", e)
-			}
-			ir = bytes.NewReader(msgb)
-		case BufferTest:
-			msgb, e := ioutil.ReadAll(f)
-			if e != nil {
-				t.Fatalf("Unexpected error: %s", e)
-			}
-			ir = bytes.NewBuffer(msgb)
-		case FileTest:
-			ir = f
+		ir, e = getReader(f, testtype)
+		if e != nil {
+			t.Fatalf("Unexpected error: %s", e)
 		}
 		//
 		if rawbody {
@@ -765,14 +699,11 @@ func TestTellError(t *testing.T) {
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
 		}
-		var ir io.Reader
-		fn := getFn(false)
-		f, e := os.Open(fn)
+		ir, e := getFile(false)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
 		}
-		defer f.Close()
-		ir = f
+		defer ir.Close()
 		_, e = c.Tell(ir, request.MsgType(100), request.LearnAction)
 		if e == nil {
 			t.Fatalf("An error should be returned")
@@ -780,6 +711,8 @@ func TestTellError(t *testing.T) {
 		if e.Error() != invalidLearnTypeErr {
 			t.Errorf("Got %s want %s", e, invalidLearnTypeErr)
 		}
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
@@ -800,6 +733,8 @@ func TestTellHam(t *testing.T) {
 			t.Fatalf("Unexpected error: %s", e)
 		}
 		tell(t, c, request.Ham, request.LearnAction, th, 1, 0, 0, false)
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
@@ -821,6 +756,8 @@ func TestTellForgetHam(t *testing.T) {
 			t.Fatalf("Unexpected error: %s", e)
 		}
 		tell(t, c, request.Ham, request.ForgetAction, th, 1, 0, 0, false)
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
@@ -842,6 +779,8 @@ func TestTellSpam(t *testing.T) {
 			t.Fatalf("Unexpected error: %s", e)
 		}
 		tell(t, c, request.Spam, request.LearnAction, th, 1, 0, 0, false)
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
@@ -863,6 +802,8 @@ func TestTellForgetSpam(t *testing.T) {
 			t.Fatalf("Unexpected error: %s", e)
 		}
 		tell(t, c, request.Spam, request.ForgetAction, th, 1, 0, 0, false)
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
@@ -883,6 +824,8 @@ func TestLearnHam(t *testing.T) {
 			t.Fatalf("Unexpected error: %s", e)
 		}
 		learn(t, c, request.Ham, th, 1, 0, 0, false)
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
@@ -903,18 +846,17 @@ func TestLearnSpam(t *testing.T) {
 			t.Fatalf("Unexpected error: %s", e)
 		}
 		learn(t, c, request.Spam, th, 2, 0, 0, true)
+	} else {
+		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
 func learn(t *testing.T, c *Client, req request.MsgType, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
-	var ir io.Reader
-	fn := getFn(isspam)
-	f, e := os.Open(fn)
+	ir, e := getFile(isspam)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
-	defer f.Close()
-	ir = f
+	defer ir.Close()
 	r, e := c.Learn(ir, req)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
@@ -928,7 +870,7 @@ func learn(t *testing.T, c *Client, req request.MsgType, th []HeaderCheck, hlen,
 	if rlen > ruleslen {
 		t.Errorf("Got %d want %d", rlen, ruleslen)
 	}
-	f.Seek(0, 0)
+	ir.Seek(0, 0)
 	r, e = c.Revoke(ir)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
@@ -938,14 +880,11 @@ func learn(t *testing.T, c *Client, req request.MsgType, th []HeaderCheck, hlen,
 }
 
 func tell(t *testing.T, c *Client, req request.MsgType, act request.TellAction, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
-	var ir io.Reader
-	fn := getFn(isspam)
-	f, e := os.Open(fn)
+	ir, e := getFile(isspam)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
-	defer f.Close()
-	ir = f
+	defer ir.Close()
 	r, e := c.Tell(ir, req, act)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
@@ -996,6 +935,44 @@ func getFn(isspam bool) (p string) {
 	} else {
 		p = path.Join(gopath, "src/github.com/baruwa-enterprise/spamc/examples/data/ham.txt")
 	}
+	return
+}
+
+func getFile(isspam bool) (f *os.File, e error) {
+	fn := getFn(isspam)
+	f, e = os.Open(fn)
+	if e != nil {
+		return
+	}
+	return
+}
+
+func getReader(f *os.File, tst int) (ir io.Reader, e error) {
+	var msgb []byte
+	f.Seek(0, 0)
+	switch tst {
+	case StringTest:
+		msgb, e = ioutil.ReadAll(f)
+		if e != nil {
+			return
+		}
+		ir = strings.NewReader(string(msgb))
+	case BytesTest:
+		msgb, e = ioutil.ReadAll(f)
+		if e != nil {
+			return
+		}
+		ir = bytes.NewReader(msgb)
+	case BufferTest:
+		msgb, e = ioutil.ReadAll(f)
+		if e != nil {
+			return
+		}
+		ir = bytes.NewBuffer(msgb)
+	case FileTest:
+		ir = f
+	}
+
 	return
 }
 
