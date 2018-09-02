@@ -16,7 +16,8 @@ before_install:
   - echo 'ENABLED=1' | sudo tee -a /etc/default/spamassassin
   - echo 'bayes_path /var/lib/spamassassin/db/bayes' | sudo tee -a /etc/spamassassin/local.cf
   - echo 'OPTIONS="--max-children 5 --helper-home-dir=/var/lib/spamassassin --listen=127.0.0.1 --socketpath=/var/run/spamd.sock --socketmode=0777 -d -l -m5"' | sudo tee -a /etc/default/spamassassin
-  - sudo -u debian-spamd sa-learn -D --restore ./examples/data/bayes-db.txt
+  - sudp cp -av ./examples/data/bayes-db.txt /tmp/bayes-db.txt
+  - sudo -u debian-spamd sa-learn -D --restore /tmp/bayes-db.txt
   - sudo service spamassassin start
 
 go:
