@@ -237,7 +237,7 @@ func (c *Client) Symbols(r io.Reader) (rs *response.Response, err error) {
 
 // Tell instructs the SPAMD service to to mark the message
 func (c *Client) Tell(r io.Reader, l request.MsgType, a request.TellAction) (rs *response.Response, err error) {
-	if l == request.NoneType {
+	if l < request.Ham || l > request.Spam {
 		err = fmt.Errorf(invalidLearnTypeErr)
 		return
 	}
