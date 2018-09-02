@@ -1,6 +1,7 @@
 language: go
 sudo: required
 env:
+  - DEP_VERSION="0.4.1" SPAMD_NETWORK="tcp4" SPAMD_ADDRESS="localhost:784" SPAMD_USER="debian-spamd" SPAMD_USE_TLS="1"
   - DEP_VERSION="0.4.1" SPAMD_NETWORK="unix" SPAMD_ADDRESS="/var/run/spamd.sock" SPAMD_USER="debian-spamd"
   - DEP_VERSION="0.4.1" SPAMD_NETWORK="tcp4" SPAMD_ADDRESS="127.0.0.1:783" SPAMD_USER="debian-spamd"
 
@@ -16,8 +17,11 @@ before_install:
   - sudo apt-get install -f
   - echo 'ENABLED=1' | sudo tee -a /etc/default/spamassassin
   - echo 'bayes_path /var/lib/spamassassin/db/bayes' | sudo tee -a /etc/spamassassin/local.cf
-  - echo 'OPTIONS="--max-children 5 --helper-home-dir=/var/lib/spamassassin --listen=127.0.0.1 --socketpath=/var/run/spamd.sock --socketmode=0777 -d -l -m5"' | sudo tee -a /etc/default/spamassassin
-  # - sudo cp -av ./examples/data/bayes-db.txt /tmp/bayes-db.txt
+  - echo 'OPTIONS="--ssl-version=tlsv1 --server-cert=/etc/pki/spamd/certs/localhost.pem --server-key=/etc/pki/spamd/private/localhost.key --max-children 5 --helper-home-dir=/var/lib/spamassassin --listen=ssl:localhost:784 --listen=127.0.0.1 --socketpath=/var/run/spamd.sock --socketmode=0777 -d -l -m5"' | sudo tee -a /etc/default/spamassassin
+  - sudo mkdir -p /etc/pki/spamd{certs,private,ca}
+  - sudo cp -va ./examples/data/ca-chain.cert.pem /etc/pki/spamd/ca/ca.pem
+  - sudo cp -va ./examples/data/localhost.key.pem /etc/pki/spamd/private/localhost.key
+  - sudo cp -va ./examples/data/localhost.pem /etc/pki/spamd/certs/localhost.pem
   - sudo -u debian-spamd sa-learn -D --restore ./examples/data/bayes-db.txt
   - sudo service spamassassin start
 
