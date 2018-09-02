@@ -10,7 +10,7 @@ before_install:
   - chmod +x $GOPATH/bin/dep
   - sudo rm -vf /opt/jdk_switcher/jdk_switcher.sh
   - sudo apt-get update -qq
-  - sudo apt-get install spamassassin || /bin/true
+  - sudo apt-get install spamassassin libio-socket-ssl-perl || /bin/true
   - sudo usermod --shell /bin/bash debian-spamd
   - sudo mkdir -p /var/lib/spamassassin/db
   - sudo chown debian-spamd:debian-spamd /var/lib/spamassassin/db
