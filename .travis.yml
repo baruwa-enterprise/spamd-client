@@ -7,8 +7,10 @@ env:
 before_install:
   - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
   - chmod +x $GOPATH/bin/dep
-  # - sudo apt-get update -qq
-  # - sudo apt-get install spamassassin
+  - sudo apt-get update -qq
+  - sudo apt-get install spamassassin || /bin/true
+  - sudo usermod --shell /bin/bash debian-spamd
+  - sudo apt-get install -f
   - echo 'ENABLED=1' | sudo tee -a /etc/default/spamassassin
   - echo 'OPTIONS="--listen=127.0.0.1 --socketpath=/var/run/spamd.sock --socketmode=0777 -d -l -m5"' | sudo tee -a /etc/default/spamassassin
   - sudo service spamassassin start
@@ -20,8 +22,3 @@ go:
 
 install:
   - make get-deps
-
-addons:
-  apt:
-    packages:
-      - spamassassin
