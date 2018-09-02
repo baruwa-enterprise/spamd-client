@@ -1,11 +1,17 @@
 language: go
-
+sudo: required
 env:
-  - DEP_VERSION="0.4.1"
+  - DEP_VERSION="0.4.1" SPAMD_NETWORK="unix" SPAMD_ADDRESS="/var/run/spamd.sock" SPAMD_USER="Debian-exim"
+  - DEP_VERSION="0.4.1" SPAMD_NETWORK="tcp4" SPAMD_ADDRESS="127.0.0.1" SPAMD_USER="Debian-exim"
 
 before_install:
   - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
   - chmod +x $GOPATH/bin/dep
+  - sudo apt-get update -qq
+  - sudo apt-get install spamassassin
+  - echo 'ENABLED=1' | sudo tee -a /etc/default/spamassassin
+  - echo 'OPTIONS="--listen=127.0.0.1 --socketpath=/var/run/spamd.sock --socketmode=0777 -d -l -m5"' | sudo tee -a /etc/default/spamassassin
+  - sudo service spamassassin start
 
 go:
   - 1.10.x
