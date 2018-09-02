@@ -34,8 +34,8 @@ const (
 )
 
 var (
-	gopath  string
-	ioTests = []int{
+	gopath, tlsRootCA, network, address, user, useTLS string
+	ioTests                                           = []int{
 		StringTest,
 		BytesTest,
 		BufferTest,
@@ -52,6 +52,14 @@ func init() {
 	gopath = os.Getenv("GOPATH")
 	if gopath == "" {
 		gopath = build.Default.GOPATH
+	}
+	tlsRootCA = path.Join(gopath, "src/github.com/baruwa-enterprise/spamc/examples/data/ca-chain.cert.pem")
+	network = os.Getenv("SPAMD_NETWORK")
+	address = os.Getenv("SPAMD_ADDRESS")
+	user = os.Getenv("SPAMD_USER")
+	useTLS = os.Getenv("SPAMD_USE_TLS")
+	if user == "" {
+		user = "exim"
 	}
 }
 
@@ -86,24 +94,24 @@ func TestBasics(t *testing.T) {
 		t.Errorf("Got %q want %q", expected, e)
 	}
 	// Test tcp
-	network := "tcp"
-	address := "127.1.1.1:4010"
-	c, e := NewClient(network, address, "exim", true)
+	netwk := "tcp"
+	addr := "127.1.1.1:4010"
+	c, e := NewClient(netwk, addr, "exim", true)
 	if e != nil {
 		t.Fatal("An error should not be returned")
 	}
-	if c.network != network {
-		t.Errorf("Got %q want %q", c.network, network)
+	if c.network != netwk {
+		t.Errorf("Got %q want %q", c.network, netwk)
 	}
-	if c.address != address {
-		t.Errorf("Got %q want %q", c.address, address)
+	if c.address != addr {
+		t.Errorf("Got %q want %q", c.address, addr)
 	}
 }
 
 func TestSettings(t *testing.T) {
-	network := "tcp"
-	address := "127.1.1.1:4010"
-	c, e := NewClient(network, address, "exim", true)
+	netwk := "tcp"
+	addr := "127.1.1.1:4010"
+	c, e := NewClient(netwk, addr, "exim", true)
 	if e != nil {
 		t.Fatal("An error should not be returned")
 	}
@@ -147,27 +155,27 @@ func TestSettings(t *testing.T) {
 }
 
 func TestUser(t *testing.T) {
-	network := "tcp"
-	address := "127.1.1.1:4010"
-	c, e := NewClient(network, address, "exim", true)
+	netwk := "tcp"
+	addr := "127.1.1.1:4010"
+	c, e := NewClient(netwk, addr, "exim", true)
 	if e != nil {
 		t.Fatal("An error should not be returned")
 	}
 	// Test SetUser
-	user := "Sa-Exim"
+	usr := "Sa-Exim"
 	if c.user != "exim" {
 		t.Errorf("Got %q want %q", c.user, "exim")
 	}
-	c.SetUser(user)
-	if c.user != user {
-		t.Errorf("Got %q want %q", c.user, user)
+	c.SetUser(usr)
+	if c.user != usr {
+		t.Errorf("Got %q want %q", c.user, usr)
 	}
 }
 
 func TestCompression(t *testing.T) {
-	network := "tcp"
-	address := "127.1.1.1:4010"
-	c, e := NewClient(network, address, "exim", true)
+	netwk := "tcp"
+	addr := "127.1.1.1:4010"
+	c, e := NewClient(netwk, addr, "exim", true)
 	if e != nil {
 		t.Fatal("An error should not be returned")
 	}
@@ -186,9 +194,9 @@ func TestCompression(t *testing.T) {
 }
 
 func TestTLS(t *testing.T) {
-	network := "tcp"
-	address := "127.1.1.1:4010"
-	c, e := NewClient(network, address, "exim", true)
+	netwk := "tcp"
+	addr := "127.1.1.1:4010"
+	c, e := NewClient(netwk, addr, "exim", true)
 	if e != nil {
 		t.Fatal("An error should not be returned")
 	}
@@ -207,9 +215,9 @@ func TestTLS(t *testing.T) {
 }
 
 func TestRaw(t *testing.T) {
-	network := "tcp"
-	address := "127.1.1.1:4010"
-	c, e := NewClient(network, address, "exim", true)
+	netwk := "tcp"
+	addr := "127.1.1.1:4010"
+	c, e := NewClient(netwk, addr, "exim", true)
 	if e != nil {
 		t.Fatal("An error should not be returned")
 	}
@@ -228,9 +236,9 @@ func TestRaw(t *testing.T) {
 }
 
 func TestRootCA(t *testing.T) {
-	network := "tcp"
-	address := "127.1.1.1:4010"
-	c, e := NewClient(network, address, "exim", true)
+	netwk := "tcp"
+	addr := "127.1.1.1:4010"
+	c, e := NewClient(netwk, addr, "exim", true)
 	if e != nil {
 		t.Fatal("An error should not be returned")
 	}
@@ -257,9 +265,9 @@ func TestRootCA(t *testing.T) {
 }
 
 func TestTLSVerification(t *testing.T) {
-	network := "tcp"
-	address := "127.1.1.1:4010"
-	c, e := NewClient(network, address, "exim", true)
+	netwk := "tcp"
+	addr := "127.1.1.1:4010"
+	c, e := NewClient(netwk, addr, "exim", true)
 	if e != nil {
 		t.Fatal("An error should not be returned")
 	}
@@ -278,16 +286,15 @@ func TestTLSVerification(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		c, e := NewClient(network, address, user, true)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
+		}
+		if useTLS == "1" {
+			c.SetRootCA(tlsRootCA)
+			c.EnableTLS()
+			c.EnableTLSVerification()
 		}
 		s, e := c.Ping()
 		if e != nil {
@@ -302,12 +309,6 @@ func TestPing(t *testing.T) {
 }
 
 func TestIOReader(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		c, e := NewClient(network, address, user, true)
 		if e != nil {
@@ -334,12 +335,6 @@ func TestIOReader(t *testing.T) {
 }
 
 func TestCheck(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		th := []HeaderCheck{
 			{"Content-Length", false},
@@ -348,6 +343,11 @@ func TestCheck(t *testing.T) {
 		c, e := NewClient(network, address, user, true)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
+		}
+		if useTLS == "1" {
+			c.SetRootCA(tlsRootCA)
+			c.EnableTLS()
+			c.EnableTLSVerification()
 		}
 		check(t, c, th, 1, 0, 0, false)
 		check(t, c, th, 1, 0, 0, true)
@@ -391,12 +391,6 @@ func check(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int
 }
 
 func TestHeaders(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		th := []HeaderCheck{
 			{"Content-Length", true},
@@ -405,6 +399,11 @@ func TestHeaders(t *testing.T) {
 		c, e := NewClient(network, address, user, true)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
+		}
+		if useTLS == "1" {
+			c.SetRootCA(tlsRootCA)
+			c.EnableTLS()
+			c.EnableTLSVerification()
 		}
 		headers(t, c, th, 2, 0, 0, false, true)
 		headers(t, c, th, 2, 0, 0, true, false)
@@ -456,12 +455,6 @@ func headers(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen i
 }
 
 func TestProcess(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		th := []HeaderCheck{
 			{"Content-Length", true},
@@ -470,6 +463,11 @@ func TestProcess(t *testing.T) {
 		c, e := NewClient(network, address, user, true)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
+		}
+		if useTLS == "1" {
+			c.SetRootCA(tlsRootCA)
+			c.EnableTLS()
+			c.EnableTLSVerification()
 		}
 		process(t, c, th, 2, 0, 0, false)
 		process(t, c, th, 2, 0, 0, true)
@@ -516,12 +514,6 @@ func process(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen i
 }
 
 func TestReport(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		th := []HeaderCheck{
 			{"Content-Length", true},
@@ -572,12 +564,6 @@ func report(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen in
 }
 
 func TestReportIfSpam(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		th := []HeaderCheck{
 			{"Content-Length", true},
@@ -586,6 +572,11 @@ func TestReportIfSpam(t *testing.T) {
 		c, e := NewClient(network, address, user, true)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
+		}
+		if useTLS == "1" {
+			c.SetRootCA(tlsRootCA)
+			c.EnableTLS()
+			c.EnableTLSVerification()
 		}
 		reportifspam(t, c, th, 2, 0, 0, false)
 		reportifspam(t, c, th, 2, 0, 0, true)
@@ -623,12 +614,6 @@ func reportifspam(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, rules
 }
 
 func TestSymbols(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		th := []HeaderCheck{
 			{"Content-Length", true},
@@ -637,6 +622,11 @@ func TestSymbols(t *testing.T) {
 		c, e := NewClient(network, address, user, true)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
+		}
+		if useTLS == "1" {
+			c.SetRootCA(tlsRootCA)
+			c.EnableTLS()
+			c.EnableTLSVerification()
 		}
 		symbols(t, c, th, 2, 0, 0, false, true)
 		symbols(t, c, th, 2, 0, 0, true, false)
@@ -688,12 +678,6 @@ func symbols(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen i
 }
 
 func TestTellError(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		c, e := NewClient(network, address, user, true)
 		if e != nil {
@@ -717,12 +701,6 @@ func TestTellError(t *testing.T) {
 }
 
 func TestTellHam(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		th := []HeaderCheck{
 			{"Content-Length", false},
@@ -732,6 +710,11 @@ func TestTellHam(t *testing.T) {
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
 		}
+		if useTLS == "1" {
+			c.SetRootCA(tlsRootCA)
+			c.EnableTLS()
+			c.EnableTLSVerification()
+		}
 		tell(t, c, request.Ham, request.LearnAction, th, 1, 0, 0, false)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
@@ -739,12 +722,6 @@ func TestTellHam(t *testing.T) {
 }
 
 func TestTellForgetHam(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		th := []HeaderCheck{
 			{"Content-Length", false},
@@ -755,6 +732,11 @@ func TestTellForgetHam(t *testing.T) {
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
 		}
+		if useTLS == "1" {
+			c.SetRootCA(tlsRootCA)
+			c.EnableTLS()
+			c.EnableTLSVerification()
+		}
 		tell(t, c, request.Ham, request.ForgetAction, th, 1, 0, 0, false)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
@@ -762,12 +744,6 @@ func TestTellForgetHam(t *testing.T) {
 }
 
 func TestTellSpam(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		th := []HeaderCheck{
 			{"Content-Length", false},
@@ -778,6 +754,11 @@ func TestTellSpam(t *testing.T) {
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
 		}
+		if useTLS == "1" {
+			c.SetRootCA(tlsRootCA)
+			c.EnableTLS()
+			c.EnableTLSVerification()
+		}
 		tell(t, c, request.Spam, request.LearnAction, th, 1, 0, 0, false)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
@@ -785,12 +766,6 @@ func TestTellSpam(t *testing.T) {
 }
 
 func TestTellForgetSpam(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		th := []HeaderCheck{
 			{"Content-Length", false},
@@ -801,6 +776,11 @@ func TestTellForgetSpam(t *testing.T) {
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
 		}
+		if useTLS == "1" {
+			c.SetRootCA(tlsRootCA)
+			c.EnableTLS()
+			c.EnableTLSVerification()
+		}
 		tell(t, c, request.Spam, request.ForgetAction, th, 1, 0, 0, false)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
@@ -808,12 +788,6 @@ func TestTellForgetSpam(t *testing.T) {
 }
 
 func TestLearnHam(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		th := []HeaderCheck{
 			{"Content-Length", false},
@@ -822,6 +796,11 @@ func TestLearnHam(t *testing.T) {
 		c, e := NewClient(network, address, user, true)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
+		}
+		if useTLS == "1" {
+			c.SetRootCA(tlsRootCA)
+			c.EnableTLS()
+			c.EnableTLSVerification()
 		}
 		learn(t, c, request.Ham, th, 1, 0, 0, false)
 	} else {
@@ -830,12 +809,6 @@ func TestLearnHam(t *testing.T) {
 }
 
 func TestLearnSpam(t *testing.T) {
-	network := os.Getenv("SPAMD_NETWORK")
-	address := os.Getenv("SPAMD_ADDRESS")
-	user := os.Getenv("SPAMD_USER")
-	if user == "" {
-		user = "exim"
-	}
 	if network != "" && address != "" {
 		th := []HeaderCheck{
 			{"Content-Length", false},
@@ -844,6 +817,11 @@ func TestLearnSpam(t *testing.T) {
 		c, e := NewClient(network, address, user, true)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
+		}
+		if useTLS == "1" {
+			c.SetRootCA(tlsRootCA)
+			c.EnableTLS()
+			c.EnableTLSVerification()
 		}
 		learn(t, c, request.Spam, th, 2, 0, 0, true)
 	} else {
