@@ -24,6 +24,7 @@ before_install:
   - sudo cp -va ./examples/data/localhost.pem /etc/pki/spamd/certs/localhost.pem
   - sudo -u debian-spamd sa-learn -D --restore ./examples/data/bayes-db.txt
   - sudo netstat -ntlp
+  - sudo -u debian-spamd spamd --help
   - sudo service spamassassin start
 
 go:
