@@ -10,9 +10,16 @@ before_install:
   - sudo apt-get update -qq
   - sudo apt-get install spamassassin || /bin/true
   - sudo usermod --shell /bin/bash debian-spamd
+  - sudo mkdir -p /var/lib/spamassassin/db
+  - sudo chown debian-spamd:debian-spamd /var/lib/spamassassin/db
   - sudo apt-get install -f
   - echo 'ENABLED=1' | sudo tee -a /etc/default/spamassassin
-  - echo 'OPTIONS="--listen=127.0.0.1 --socketpath=/var/run/spamd.sock --socketmode=0777 -d -l -m5"' | sudo tee -a /etc/default/spamassassin
+  - echo 'bayes_path /var/lib/spamassassin/db/bayes' | sudo tee -a /etc/spamassassin/local.cf
+  - echo 'OPTIONS="--create-prefs --max-children 5 --helper-home-dir=/var/lib/spamassassin --listen=127.0.0.1 --socketpath=/var/run/spamd.sock --socketmode=0777 -d -l -m5"' | sudo tee -a /etc/default/spamassassin
+  - wget -O /tmp/bayesian.database.gz http://artinvoice.hu/spams/bayesian.database.gz
+  - gunzip /tmp/bayesian.database.gz
+  - sudo -u debian-spamd sa-learn --restore /tmp/bayesian.database
+  - rm -rf /tmp/bayesian.database
   - sudo service spamassassin start
 
 go:
