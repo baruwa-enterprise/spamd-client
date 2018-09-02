@@ -53,7 +53,12 @@ func init() {
 	if gopath == "" {
 		gopath = build.Default.GOPATH
 	}
-	tlsRootCA = path.Join(gopath, "src/github.com/baruwa-enterprise/spamc/examples/data/ca-chain.cert.pem")
+	tlsp := os.Getenv("SPAMD_TLS_CA")
+	if tlsp != "" {
+		tlsRootCA = tlsp
+	} else {
+		tlsRootCA = path.Join(gopath, "src/github.com/baruwa-enterprise/spamc/examples/data/ca-chain.cert.pem")
+	}
 	network = os.Getenv("SPAMD_NETWORK")
 	address = os.Getenv("SPAMD_ADDRESS")
 	user = os.Getenv("SPAMD_USER")
@@ -351,9 +356,11 @@ func TestCheck(t *testing.T) {
 		}
 		check(t, c, th, 1, 0, 0, false)
 		check(t, c, th, 1, 0, 0, true)
-		c.DisableCompression()
-		check(t, c, th, 1, 0, 0, false)
-		check(t, c, th, 1, 0, 0, true)
+		if useTLS != "1" {
+			c.DisableCompression()
+			check(t, c, th, 1, 0, 0, false)
+			check(t, c, th, 1, 0, 0, true)
+		}
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
@@ -522,6 +529,11 @@ func TestReport(t *testing.T) {
 		c, e := NewClient(network, address, user, true)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
+		}
+		if useTLS == "1" {
+			c.SetRootCA(tlsRootCA)
+			c.EnableTLS()
+			c.EnableTLSVerification()
 		}
 		report(t, c, th, 2, 0, 0, false, true)
 		report(t, c, th, 2, 0, 0, true, false)
