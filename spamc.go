@@ -203,7 +203,9 @@ func (c *Client) Headers(r io.Reader) (rs *response.Response, err error) {
 func (c *Client) Ping() (s bool, err error) {
 	var rs *response.Response
 	rs, err = c.cmd(request.Ping, request.NoAction, request.NoneType, nil)
-	s = rs.StatusCode == response.ExOK
+	if err == nil {
+		s = rs.StatusCode == response.ExOK
+	}
 	return
 }
 
