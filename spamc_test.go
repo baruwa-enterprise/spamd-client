@@ -13,11 +13,9 @@ import (
 	"bytes"
 	"compress/bzip2"
 	"fmt"
-	"go/build"
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
 	"strings"
 	"testing"
 	"time"
@@ -34,8 +32,8 @@ const (
 )
 
 var (
-	gopath, tlsRootCA, network, address, user, useTLS string
-	ioTests                                           = []int{
+	tlsRootCA, network, address, user, useTLS string
+	ioTests                                   = []int{
 		StringTest,
 		BytesTest,
 		BufferTest,
@@ -49,15 +47,11 @@ type HeaderCheck struct {
 }
 
 func init() {
-	gopath = os.Getenv("GOPATH")
-	if gopath == "" {
-		gopath = build.Default.GOPATH
-	}
 	tlsp := os.Getenv("SPAMD_TLS_CA")
 	if tlsp != "" {
 		tlsRootCA = tlsp
 	} else {
-		tlsRootCA = path.Join(gopath, "src/github.com/baruwa-enterprise/spamc/examples/data/ca-chain.cert.pem")
+		tlsRootCA = "./examples/data/ca-chain.cert.pem"
 	}
 	network = os.Getenv("SPAMD_NETWORK")
 	address = os.Getenv("SPAMD_ADDRESS")
@@ -251,7 +245,7 @@ func TestRootCA(t *testing.T) {
 	if c.rootCA != "" {
 		t.Errorf("Got %q want %q", c.rootCA, "")
 	}
-	fn := path.Join(gopath, "src/github.com/baruwa-enterprise/spamc/examples/ca.pem")
+	fn := "./examples/ca.pem"
 	e = c.SetRootCA(fn)
 	if e == nil {
 		t.Fatalf("Expected an error got nil")
@@ -259,7 +253,7 @@ func TestRootCA(t *testing.T) {
 	if !os.IsNotExist(e) {
 		t.Errorf("Expected os.IsNotExist error got: %s", e)
 	}
-	fn = path.Join(gopath, "src/github.com/baruwa-enterprise/spamc/examples/data/ham.txt")
+	fn = "./examples/data/ham.txt"
 	e = c.SetRootCA(fn)
 	if e != nil {
 		t.Fatalf("UnExpected error: %s", e)
@@ -319,7 +313,7 @@ func TestIOReader(t *testing.T) {
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
 		}
-		fn := path.Join(gopath, "src/github.com/baruwa-enterprise/spamc/examples/data/spam.tar.bz2")
+		fn := "./examples/data/spam.tar.bz2"
 		var ir io.Reader
 		f, e := os.Open(fn)
 		if e != nil {
@@ -921,9 +915,9 @@ func basicChecks(t *testing.T, r *response.Response, req request.Method, th []He
 
 func getFn(isspam bool) (p string) {
 	if isspam {
-		p = path.Join(gopath, "src/github.com/baruwa-enterprise/spamc/examples/data/spam.txt")
+		p = "./examples/data/spam.txt"
 	} else {
-		p = path.Join(gopath, "src/github.com/baruwa-enterprise/spamc/examples/data/ham.txt")
+		p = "./examples/data/ham.txt"
 	}
 	return
 }
