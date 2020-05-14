@@ -1,13 +1,11 @@
 language: go
 sudo: required
 env:
-  - DEP_VERSION="0.4.1" SPAMD_NETWORK="tcp4" SPAMD_ADDRESS="localhost:784" SPAMD_USER="debian-spamd" SPAMD_USE_TLS="1"
-  - DEP_VERSION="0.4.1" SPAMD_NETWORK="unix" SPAMD_ADDRESS="/var/run/spamd.sock" SPAMD_USER="debian-spamd"
-  - DEP_VERSION="0.4.1" SPAMD_NETWORK="tcp4" SPAMD_ADDRESS="127.0.0.1:783" SPAMD_USER="debian-spamd"
+  - SPAMD_NETWORK="tcp4" SPAMD_ADDRESS="localhost:784" SPAMD_USER="debian-spamd" SPAMD_USE_TLS="1"
+  - SPAMD_NETWORK="unix" SPAMD_ADDRESS="/var/run/spamd.sock" SPAMD_USER="debian-spamd"
+  - SPAMD_NETWORK="tcp4" SPAMD_ADDRESS="127.0.0.1:783" SPAMD_USER="debian-spamd"
 
 before_install:
-  - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
-  - chmod +x $GOPATH/bin/dep
   - sudo rm -vf /opt/jdk_switcher/jdk_switcher.sh
   - sudo apt-get update -qq
   - sudo apt-get install spamassassin libio-socket-ssl-perl || /bin/true
@@ -23,21 +21,12 @@ before_install:
   - sudo cp -va ./examples/data/localhost.key.pem /etc/pki/spamd/private/localhost.key
   - sudo cp -va ./examples/data/localhost.pem /etc/pki/spamd/certs/localhost.pem
   - sudo -u debian-spamd sa-learn -D --restore ./examples/data/bayes-db.txt
-  # - sudo netstat -ntlp
-  # - sudo -u debian-spamd spamd --help
   - sudo service spamassassin start
 
 go:
-  - 1.10.x
-  - 1.11.x
-  - 1.12.x
-  - master
+  - 1.x
 
-install:
-  - make get-deps
-
-script:
-  go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+script: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
