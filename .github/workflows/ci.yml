@@ -16,6 +16,8 @@ jobs:
         address: ["127.0.0.1:783"]
         include:
           - network: unix
+            go-version: ["1.15", "1.10"]
+            user: ["debian-spamd"]
             address: /var/run/spamd.sock
         # exclude:
         #   - address: /var/run/spamd.sock
