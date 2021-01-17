@@ -10,21 +10,22 @@ jobs:
   build:
     strategy:
       matrix:
-        go-version: ["1.15", "1.14", "1.13"]
-        include:
-          - conn_type: "tcp4/hostname"
-            network: tcp4
-            address: "localhost:784"
-            user: "debian-spamd"
-            usetls: 1
-          - conn_type: "unix"
-            network: unix
-            address: "/var/run/spamd.sock"
-            user: "debian-spamd"
-          - conn_type: "tcp4/ip"
-            network: tcp4
-            address: "127.0.0.1:783"
-            user: "debian-spamd"
+        go-version: ["1.15"]
+        builds: [{ "network": "tcp4", "address": "localhost:784", "usetls": 1 }]
+        # include:
+        #   - conn_type: "tcp4/hostname"
+        #     network: tcp4
+        #     address: "localhost:784"
+        #     user: "debian-spamd"
+        #     usetls: 1
+        #   - conn_type: "unix"
+        #     network: unix
+        #     address: "/var/run/spamd.sock"
+        #     user: "debian-spamd"
+        #   - conn_type: "tcp4/ip"
+        #     network: tcp4
+        #     address: "127.0.0.1:783"
+        #     user: "debian-spamd"
     name: Tests
     runs-on: ubuntu-latest
     steps:
@@ -60,10 +61,10 @@ jobs:
 
       - name: Test
         env:
-          SPAMD_NETWORK: ${{ matrix.network }}
-          SPAMD_ADDRESS: ${{ matrix.address }}
-          SPAMD_USER: ${{ matrix.user }}
-          SPAMD_USE_TLS: ${{ matrix.usetls }}
+          SPAMD_NETWORK: ${{ builds.matrix.network }}
+          SPAMD_ADDRESS: ${{ builds.matrix.address }}
+          SPAMD_USER: ${{ builds.matrix.user }}
+          SPAMD_USE_TLS: ${{ builds.matrix.usetls }}
         run: |
           sudo netstat -ntlp
           go test -race -coverprofile=coverage.txt -covermode=atomic ./...
