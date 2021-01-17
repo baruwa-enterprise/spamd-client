@@ -10,20 +10,11 @@ jobs:
   build:
     strategy:
       matrix:
-        include:
-          - conn: "tls"
-            network: tcp4
-            address: "localhost:784"
-            user: "debian-spamd"
-            usetls: 1
-          - conn: "tcp4"
-            network: tcp4
-            address: "127.0.0.1:783"
-            user: "debian-spamd"
-          - conn: "unix"
-            network: unix
-            address: "/var/run/spamd.sock"
-            user: "debian-spamd"
+        env:
+          - {SPAMD_NETWORK: tcp4, SPAMD_ADDRESS: "localhost:784", SPAMD_USER: "debian-spamd", SPAMD_USE_TLS: 1}
+          - {SPAMD_NETWORK: tcp4, SPAMD_ADDRESS: "127.0.0.1:783", SPAMD_USER: "debian-spamd"}
+          - {SPAMD_NETWORK: unix, SPAMD_ADDRESS: "/var/run/spamd.sock", SPAMD_USER: "debian-spamd"}
+    env: ${{ matrix.env }}
     name: Tests
     runs-on: ubuntu-latest
     steps:
