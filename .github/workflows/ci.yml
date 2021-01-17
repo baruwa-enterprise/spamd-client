@@ -10,29 +10,27 @@ jobs:
   build:
     strategy:
       matrix:
-        go-version: ["1.15", "1.10"]
-        network: ["tcp4"]
-        user: ["debian-spamd"]
-        address: ["127.0.0.1:783"]
         include:
-          - network: unix
-            go-version: ["1.15", "1.10"]
-            user: ["debian-spamd"]
-            address: /var/run/spamd.sock
-        # exclude:
-        #   - address: /var/run/spamd.sock
-        #     network: tcp4
-        #   - address: "127.0.0.1:783"
-        #     usetls: 1
-        #   - network: unix
-        #     address: "127.0.0.1:783"
+          - conn: "tls"
+            network: tcp4
+            address: "localhost:784"
+            user: "debian-spamd"
+            usetls: 1
+          - conn: "tcp4"
+            network: tcp4
+            address: "127.0.0.1:783"
+            user: "debian-spamd"
+          - conn: "unix"
+            network: unix
+            address: "/var/run/spamd.sock"
+            user: "debian-spamd"
     name: Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go ${{ matrix.go-version }}
+      - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: "1.10"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
