@@ -11,14 +11,16 @@ jobs:
     strategy:
       matrix:
         go-version: ["1.15", "1.10"]
-        network: ["tcp4", "unix"]
-        address: ["localhost:784", "/var/run/spamd.sock", "127.0.0.1:783"]
-        usetls: [1, 0]
-        exclude:
-          - address: /var/run/spamd.sock
-            network: tcp4
-          - address: "127.0.0.1:783"
-            usetls: 1
+        network: ["tcp4"]
+        address: ["127.0.0.1:783"]
+        usetls: [0]
+        # exclude:
+        #   - address: /var/run/spamd.sock
+        #     network: tcp4
+        #   - address: "127.0.0.1:783"
+        #     usetls: 1
+        #   - network: unix
+        #     address: "127.0.0.1:783"
     name: Tests
     runs-on: ubuntu-latest
     steps:
