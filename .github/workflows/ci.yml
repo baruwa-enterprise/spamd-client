@@ -12,9 +12,9 @@ jobs:
       matrix:
         go-version: ["1.15", "1.10"]
         env:
-          - SPAMD_NETWORK="tcp" SPAMD_ADDRESS="localhost:784" SPAMD_USE_TLS=1
+          - SPAMD_NETWORK="tcp4" SPAMD_ADDRESS="localhost:784" SPAMD_USE_TLS=1
           - SPAMD_NETWORK="unix" SPAMD_ADDRESS="/var/run/spamd.sock" SPAMD_USE_TLS=
-          - SPAMD_NETWORK="tcp" SPAMD_ADDRESS="127.0.0.1:783" SPAMD_USE_TLS=
+          - SPAMD_NETWORK="tcp4" SPAMD_ADDRESS="127.0.0.1:783" SPAMD_USE_TLS=
         # include:
         #   - conn_type: "tcp4/hostname"
         #     network: tcp4
