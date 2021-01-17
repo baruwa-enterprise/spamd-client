@@ -10,23 +10,27 @@ jobs:
   build:
     strategy:
       matrix:
-        include:
-          - conn_type: "tcp4/hostname"
-            network: tcp4
-            address: "localhost:784"
-            user: "debian-spamd"
-            usetls: 1
-            go: ["1.15", "1.14", "1.13"]
-          - conn_type: "unix"
-            network: unix
-            address: "/var/run/spamd.sock"
-            user: "debian-spamd"
-            go: ["1.15", "1.14", "1.13"]
-          - conn_type: "tcp4/ip"
-            network: tcp4
-            address: "127.0.0.1:783"
-            user: "debian-spamd"
-            go: ["1.15", "1.14", "1.13"]
+        go: ["1.15", "1.14", "1.13"]
+        address: ["localhost:784", "/var/run/spamd.sock", "127.0.0.1:783"]
+        network: ["tcp4", "unix", "tcp4"]
+        usetls: [1]
+        # include:
+        #   - conn_type: "tcp4/hostname"
+        #     network: tcp4
+        #     address: "localhost:784"
+        #     user: "debian-spamd"
+        #     usetls: 1
+        #     go: ["1.15", "1.14", "1.13"]
+        #   - conn_type: "unix"
+        #     network: unix
+        #     address: "/var/run/spamd.sock"
+        #     user: "debian-spamd"
+        #     go: ["1.15", "1.14", "1.13"]
+        #   - conn_type: "tcp4/ip"
+        #     network: tcp4
+        #     address: "127.0.0.1:783"
+        #     user: "debian-spamd"
+        #     go: ["1.15", "1.14", "1.13"]
     name: Tests
     runs-on: ubuntu-latest
     steps:
