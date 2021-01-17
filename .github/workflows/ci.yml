@@ -1,0 +1,79 @@
+name: Ci
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  build:
+    strategy:
+      matrix:
+        include:
+          - conn_type: "tcp4/hostname"
+            network: tcp4
+            address: "localhost:784"
+            user: "debian-spamd"
+            usetls: 1
+          - conn_type: "unix"
+            network: unix
+            address: "/var/run/spamd.sock"
+            user: "debian-spamd"
+            usetls:
+          - conn_type: "tcp4/ip"
+            network: tcp4
+            address: "127.0.0.1:784"
+            user: "debian-spamd"
+            usetls:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Get dependencies
+      run: |
+        go get -v -t -d ./...
+        sudo apt-get update -qq
+        sudo apt-get install spamassassin libio-socket-ssl-perl || /bin/true
+        sudo usermod --shell /bin/bash debian-spamd
+        sudo mkdir -p /var/lib/spamassassin/db
+        sudo chown debian-spamd:debian-spamd /var/lib/spamassassin/db
+        sudo apt-get install -f
+        echo 'ENABLED=1' | sudo tee -a /etc/default/spamassassin
+        echo 'bayes_path /var/lib/spamassassin/db/bayes' | sudo tee -a /etc/spamassassin/local.cf
+        echo 'OPTIONS="-4 --server-cert=/etc/pki/spamd/certs/localhost.pem --server-key=/etc/pki/spamd/private/localhost.key --helper-home-dir=/var/lib/spamassassin --listen=ssl:localhost:784 --listen=127.0.0.1:783 --socketpath=/var/run/spamd.sock --socketmode=0777 -d -l -m15"' | sudo tee -a /etc/default/spamassassin
+        sudo mkdir -p /etc/pki/spamd/{certs,private,ca}
+        sudo cp -va ./examples/data/ca-chain.cert.pem /etc/pki/spamd/ca/ca.pem
+        sudo cp -va ./examples/data/localhost.key.pem /etc/pki/spamd/private/localhost.key
+        sudo cp -va ./examples/data/localhost.pem /etc/pki/spamd/certs/localhost.pem
+        sudo -u debian-spamd sa-learn -D --restore ./examples/data/bayes-db.txt
+        sudo service spamassassin start
+
+    - name: Build
+      run: go build -v .
+
+    - name: Test
+      env:
+          SPAMD_NETWORK: ${{ matrix.network }}
+          SPAMD_ADDRESS: ${{ matrix.address }}
+          SPAMD_USER: ${{ matrix.user }}
+          SPAMD_USE_TLS: ${{ matrix.usetls }}
+      run: |
+        echo "ENV: SPAMD_NETWORK=$SPAMD_NETWORK SPAMD_ADDRESS=$SPAMD_ADDRESS SPAMD_USER=$SPAMD_USER SPAMD_USE_TLS=$SPAMD_USE_TLS"
+        go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        file: ./coverage.txt
+        fail_ci_if_error: false
