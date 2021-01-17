@@ -49,11 +49,6 @@ jobs:
         run: go build -v .
 
       - name: Test
-        env:
-          SPAMD_NETWORK: ${{ matrix.network }}
-          SPAMD_ADDRESS: ${{ matrix.address }}
-          SPAMD_USER: ${{ matrix.user }}
-          SPAMD_USE_TLS: ${{ matrix.usetls }}
         run: |
           sudo netstat -ntlp
           go test -race -coverprofile=coverage.txt -covermode=atomic ./...
