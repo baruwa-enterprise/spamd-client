@@ -2,7 +2,6 @@
 
 Golang Spamc Client
 
-[![Build Status](https://travis-ci.org/baruwa-enterprise/spamc.svg?branch=master)](https://travis-ci.org/baruwa-enterprise/spamc)
 [![codecov](https://codecov.io/gh/baruwa-enterprise/spamc/branch/master/graph/badge.svg)](https://codecov.io/gh/baruwa-enterprise/spamc)
 [![Go Report Card](https://goreportcard.com/badge/github.com/baruwa-enterprise/spamc)](https://goreportcard.com/report/github.com/baruwa-enterprise/spamc)
 [![GoDoc](https://godoc.org/github.com/baruwa-enterprise/spamc?status.svg)](https://godoc.org/github.com/baruwa-enterprise/spamc)
