@@ -22,7 +22,7 @@ jobs:
             user: "debian-spamd"
           - conn_type: "tcp4/ip"
             network: tcp4
-            address: "127.0.0.1:784"
+            address: "127.0.0.1:783"
             user: "debian-spamd"
     name: Tests
     runs-on: ubuntu-latest
