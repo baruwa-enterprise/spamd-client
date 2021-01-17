@@ -2,6 +2,7 @@
 
 Golang Spamc Client
 
+[![Ci](https://github.com/baruwa-enterprise/spamc/workflows/Ci/badge.svg)](https://github.com/baruwa-enterprise/spamc/actions?query=workflow%3ACi)
 [![codecov](https://codecov.io/gh/baruwa-enterprise/spamc/branch/master/graph/badge.svg)](https://codecov.io/gh/baruwa-enterprise/spamc)
 [![Go Report Card](https://goreportcard.com/badge/github.com/baruwa-enterprise/spamc)](https://goreportcard.com/report/github.com/baruwa-enterprise/spamc)
 [![GoDoc](https://godoc.org/github.com/baruwa-enterprise/spamc?status.svg)](https://godoc.org/github.com/baruwa-enterprise/spamc)
