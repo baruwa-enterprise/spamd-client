@@ -10,7 +10,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go-version: [1.15, 1.10]
+        go-version: ["1.15", "1.10"]
         env:
           - {SPAMD_NETWORK: tcp4, SPAMD_ADDRESS: "localhost:784", SPAMD_USER: "debian-spamd", SPAMD_USE_TLS: 1}
           - {SPAMD_NETWORK: tcp4, SPAMD_ADDRESS: "127.0.0.1:783", SPAMD_USER: "debian-spamd"}
