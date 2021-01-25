@@ -26,9 +26,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/baruwa-enterprise/spamc"
-	"github.com/baruwa-enterprise/spamc/request"
-	"github.com/baruwa-enterprise/spamc/response"
+	spamc "github.com/baruwa-enterprise/spamd-client/pkg"
+	"github.com/baruwa-enterprise/spamd-client/pkg/request"
+	"github.com/baruwa-enterprise/spamd-client/pkg/response"
 	flag "github.com/spf13/pflag"
 )
 

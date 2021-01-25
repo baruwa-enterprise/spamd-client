@@ -12,7 +12,7 @@ package response
 import (
 	"net/textproto"
 
-	"github.com/baruwa-enterprise/spamc/request"
+	"github.com/baruwa-enterprise/spamd-client/pkg/request"
 )
 
 const (

@@ -1,16 +1,16 @@
-# spamc
+# spamd-client
 
-Golang Spamc SpamAssassin Client
+Golang SpamAssassin Client Library and Commandline tool
 
-[![Ci](https://github.com/baruwa-enterprise/spamc/workflows/Ci/badge.svg)](https://github.com/baruwa-enterprise/spamc/actions?query=workflow%3ACi)
-[![codecov](https://codecov.io/gh/baruwa-enterprise/spamc/branch/master/graph/badge.svg)](https://codecov.io/gh/baruwa-enterprise/spamc)
-[![Go Report Card](https://goreportcard.com/badge/github.com/baruwa-enterprise/spamc)](https://goreportcard.com/report/github.com/baruwa-enterprise/spamc)
-[![Go Reference](https://pkg.go.dev/badge/github.com/baruwa-enterprise/spamc.svg)](https://pkg.go.dev/github.com/baruwa-enterprise/spamc)
+[![Ci](https://github.com/baruwa-enterprise/spamd-client/workflows/Ci/badge.svg)](https://github.com/baruwa-enterprise/spamd-client/actions?query=workflow%3ACi)
+[![codecov](https://codecov.io/gh/baruwa-enterprise/spamd-client/branch/master/graph/badge.svg)](https://codecov.io/gh/baruwa-enterprise/spamd-client)
+[![Go Report Card](https://goreportcard.com/badge/github.com/baruwa-enterprise/spamd-client)](https://goreportcard.com/report/github.com/baruwa-enterprise/spamd-client)
+[![Go Reference](https://pkg.go.dev/badge/github.com/baruwa-enterprise/spamd-client.svg)](https://pkg.go.dev/github.com/baruwa-enterprise/spamd-client)
 [![MPLv2 License](https://img.shields.io/badge/license-MPLv2-blue.svg?style=flat-square)](https://www.mozilla.org/MPL/2.0/)
 
 ## Description
 
-spamc is a Golang library and cmdline tool that implements the
+spamd-client is a Golang library and cmdline tool that implements the
 SPAMC/SPAMD client protocol used by SpamAssassin.
 
 ## Requirements
@@ -20,33 +20,27 @@ SPAMC/SPAMD client protocol used by SpamAssassin.
 
 ## Getting started
 
-### Spamc client
+### spamd-client client
 
-The spamc client can be installed as follows
+The spamd-client client can be installed as follows
 
 ```console
-$ go get github.com/baruwa-enterprise/spamc/cmd/spamc
+$ go get github.com/baruwa-enterprise/spamd-client/cmd/spamd-client
 ```
 
 Or by cloning the repo and then running
 
 ```console
 $ make build
-$ ./bin/spamc
+$ ./bin/spamd-client
 ```
 
-### Spamc library
+### spamd-client library
 
-To install the library
-
-```console
-go get github.com/baruwa-enterprise/spamc
-```
-
-You can then import it in your code
+You can import the library in your code
 
 ```golang
-import "github.com/baruwa-enterprise/spamc"
+import "github.com/baruwa-enterprise/spamd-client/pkg"
 ```
 
 ### Testing

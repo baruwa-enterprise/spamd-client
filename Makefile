@@ -1,8 +1,8 @@
 .PHONY: build clean test help default
 
-BIN_NAME=spamc
+BIN_NAME=spamd-client
 
-VERSION := $(shell grep "const Version " cmd/spamc/version.go | sed -E 's/.*"(.+)"$$/\1/')
+VERSION := $(shell grep "const Version " cmd/spamd-client/version.go | sed -E 's/.*"(.+)"$$/\1/')
 GIT_COMMIT=$(shell git rev-parse HEAD)
 GIT_DIRTY=$(shell test -n "`git status --porcelain`" && echo "+CHANGES" || true)
 IMAGE_NAME := "baruwa/spamc"
@@ -21,7 +21,7 @@ help:
 build:
 	@echo "building ${BIN_NAME} ${VERSION}"
 	@echo "GOPATH=${GOPATH}"
-	go build -ldflags "-X main.GitCommit=${GIT_COMMIT}${GIT_DIRTY} -X main.VersionPrerelease=DEV" -o bin/${BIN_NAME} ./cmd/spamc
+	go build -ldflags "-X main.GitCommit=${GIT_COMMIT}${GIT_DIRTY} -X main.VersionPrerelease=DEV" -o bin/${BIN_NAME} ./cmd/spamd-client
 
 clean:
 	@test ! -e bin/${BIN_NAME} || rm bin/${BIN_NAME}

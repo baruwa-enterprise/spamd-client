@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/baruwa-enterprise/spamc/request"
-	"github.com/baruwa-enterprise/spamc/response"
+	"github.com/baruwa-enterprise/spamd-client/pkg/request"
+	"github.com/baruwa-enterprise/spamd-client/pkg/response"
 )
 
 const (
@@ -52,7 +52,7 @@ func init() {
 	if tlsp != "" {
 		tlsRootCA = tlsp
 	} else {
-		tlsRootCA = "./examples/data/ca-chain.cert.pem"
+		tlsRootCA = "../examples/data/ca-chain.cert.pem"
 	}
 	network = os.Getenv("SPAMD_NETWORK")
 	address = os.Getenv("SPAMD_ADDRESS")
@@ -246,7 +246,7 @@ func TestRootCA(t *testing.T) {
 	if c.rootCA != "" {
 		t.Errorf("Got %q want %q", c.rootCA, "")
 	}
-	fn := "./examples/ca.pem"
+	fn := "../examples/ca.pem"
 	e = c.SetRootCA(fn)
 	if e == nil {
 		t.Fatalf("Expected an error got nil")
@@ -254,7 +254,7 @@ func TestRootCA(t *testing.T) {
 	if !os.IsNotExist(e) {
 		t.Errorf("Expected os.IsNotExist error got: %s", e)
 	}
-	fn = "./examples/data/ham.txt"
+	fn = "../examples/data/ham.txt"
 	e = c.SetRootCA(fn)
 	if e != nil {
 		t.Fatalf("UnExpected error: %s", e)
@@ -316,7 +316,7 @@ func TestIOReader(t *testing.T) {
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
 		}
-		fn := "./examples/data/spam.tar.bz2"
+		fn := "../examples/data/spam.tar.bz2"
 		var ir io.Reader
 		f, e := os.Open(fn)
 		if e != nil {
@@ -931,9 +931,9 @@ func basicChecks(t *testing.T, r *response.Response, req request.Method, th []He
 
 func getFn(isspam bool) (p string) {
 	if isspam {
-		p = "./examples/data/spam.txt"
+		p = "../examples/data/spam.txt"
 	} else {
-		p = "./examples/data/ham.txt"
+		p = "../examples/data/ham.txt"
 	}
 	return
 }

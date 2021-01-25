@@ -12,7 +12,7 @@ package request
 import (
 	"testing"
 
-	"github.com/baruwa-enterprise/spamc/header"
+	"github.com/baruwa-enterprise/spamd-client/pkg/header"
 )
 
 type MethodTestKey struct {
