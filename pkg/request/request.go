@@ -4,8 +4,8 @@
 // You can obtain one at http://mozilla.org/MPL/2.0/.
 
 /*
-Package request Golang Spamc SpamAssassin Client
-Spamc - Golang Spamc SpamAssassin Client
+Package request Golang Spamd SpamAssassin Client
+spamd-client - Golang Spamd SpamAssassin Client
 */
 package request
 
@@ -56,7 +56,7 @@ const (
 	Spam
 )
 
-// A Method represents a Spamc request method
+// A Method represents a Spamd request method
 type Method int
 
 func (m Method) String() (s string) {

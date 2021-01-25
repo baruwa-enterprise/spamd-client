@@ -4,10 +4,10 @@
 // You can obtain one at http://mozilla.org/MPL/2.0/.
 
 /*
-Package spamc Golang Spamc SpamAssassin Client
-Spamc - Golang Spamc SpamAssassin Client
+Package spamdclient Golang Spamd SpamAssassin Client
+spamd-client - Golang Spamd SpamAssassin Client
 */
-package spamc
+package spamdclient
 
 import (
 	"bufio"
@@ -56,7 +56,7 @@ var (
 	noDigitRe    = regexp.MustCompile(`[^\d\-]`)
 )
 
-// A Client represents a Spamc client.
+// A Client represents a Spamd-client.
 type Client struct {
 	network            string
 	address            string
@@ -72,7 +72,7 @@ type Client struct {
 	cmdTimeout         time.Duration
 }
 
-// NewClient returns a new Spamc client.
+// NewClient returns a new Spamd-client.
 func NewClient(network, address, user string, useCompression bool) (c *Client, err error) {
 	if network == "" && address == "" {
 		network = "unix"

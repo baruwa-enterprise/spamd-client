@@ -5,7 +5,7 @@
 
 /*
 Package main
-Spamc - Golang Spamc SpamAssassin Client
+spamd-client - Golang Spamd SpamAssassin Client
 */
 package main
 
@@ -30,7 +30,7 @@ import (
 	"strings"
 	"time"
 
-	spamc "github.com/baruwa-enterprise/spamd-client/pkg"
+	spamdclient "github.com/baruwa-enterprise/spamd-client/pkg"
 	"github.com/baruwa-enterprise/spamd-client/pkg/request"
 	"github.com/baruwa-enterprise/spamd-client/pkg/response"
 	flag "github.com/spf13/pflag"
@@ -132,7 +132,7 @@ My Workd
 		defer func() {
 			ch <- true
 		}()
-		c, err := spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
+		c, err := spamdclient.NewClient(network, address, cfg.User, cfg.UseCompression)
 		if err != nil {
 			log.Println(err)
 			return
@@ -155,7 +155,7 @@ My Workd
 		d(r)
 	}(m)
 	go func(m []byte) {
-		c, err := spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
+		c, err := spamdclient.NewClient(network, address, cfg.User, cfg.UseCompression)
 		defer func() {
 			ch <- true
 		}()
@@ -182,7 +182,7 @@ My Workd
 		d(r)
 	}(m)
 	go func(m []byte) {
-		c, err := spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
+		c, err := spamdclient.NewClient(network, address, cfg.User, cfg.UseCompression)
 		defer func() {
 			ch <- true
 		}()
@@ -211,7 +211,7 @@ My Workd
 		defer func() {
 			ch <- true
 		}()
-		c, err := spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
+		c, err := spamdclient.NewClient(network, address, cfg.User, cfg.UseCompression)
 		if err != nil {
 			log.Println(err)
 			return
@@ -237,7 +237,7 @@ My Workd
 		defer func() {
 			ch <- true
 		}()
-		c, err := spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
+		c, err := spamdclient.NewClient(network, address, cfg.User, cfg.UseCompression)
 		if err != nil {
 			log.Println(err)
 			return
@@ -263,7 +263,7 @@ My Workd
 		defer func() {
 			ch <- true
 		}()
-		c, err := spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
+		c, err := spamdclient.NewClient(network, address, cfg.User, cfg.UseCompression)
 		if err != nil {
 			log.Println(err)
 			return
@@ -286,7 +286,7 @@ My Workd
 		d(r)
 	}(m)
 	<-ch
-	c, err := spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
+	c, err := spamdclient.NewClient(network, address, cfg.User, cfg.UseCompression)
 	if err != nil {
 		log.Println(err)
 		return

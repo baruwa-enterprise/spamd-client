@@ -4,8 +4,8 @@
 // You can obtain one at http://mozilla.org/MPL/2.0/.
 
 /*
-Package header Golang Spamc SpamAssassin Client
-Spamc - Golang Spamc SpamAssassin Client
+Package header Golang Spamd SpamAssassin Client
+spamd-client - Golang Spamd SpamAssassin Client
 */
 package header
 
@@ -24,7 +24,7 @@ const (
 	Set
 )
 
-// A Header represents a spamc client header
+// A Header represents a spamd-client header
 type Header int
 
 func (h Header) String() (s string) {

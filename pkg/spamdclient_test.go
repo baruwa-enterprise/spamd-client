@@ -4,10 +4,10 @@
 // You can obtain one at http://mozilla.org/MPL/2.0/.
 
 /*
-Package spamc Golang Spamc SpamAssassin Client
-Spamc - Golang Spamc SpamAssassin Client
+Package spamdclient Golang Spamd SpamAssassin Client
+spamd-client - Golang Spamd SpamAssassin Client
 */
-package spamc
+package spamdclient
 
 import (
 	"bytes"

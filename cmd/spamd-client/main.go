@@ -5,7 +5,7 @@
 
 /*
 Package main
-Spamc - Golang Spamc SpamAssassin Client
+spamd-client - Golang Spamd SpamAssassin Client
 */
 package main
 
@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	spamc "github.com/baruwa-enterprise/spamd-client/pkg"
+	spamdclient "github.com/baruwa-enterprise/spamd-client/pkg"
 	"github.com/baruwa-enterprise/spamd-client/pkg/request"
 	"github.com/baruwa-enterprise/spamd-client/pkg/response"
 	flag "github.com/spf13/pflag"
@@ -159,7 +159,7 @@ error.`)
 		`Pipe the output to the given command instead
 of stdout. This must be the last option. [Not Supported]`)
 	flag.BoolVarP(&cfg.Version, "version", "V", false,
-		`Print spamc version and exit.`)
+		`Print spamd-client version and exit.`)
 	flag.BoolVarP(&cfg.KeepAliceCheck, "send-ping", "K", false,
 		`Keepalive check of spamd.`)
 	flag.BoolVarP(&cfg.UseCompression, "use-compression", "z", false,
@@ -184,7 +184,7 @@ func main() {
 	var m *os.File
 	var fi os.FileInfo
 	var u *user.User
-	var c *spamc.Client
+	var c *spamdclient.Client
 	var network, address string
 
 	flag.Usage = usage
@@ -285,8 +285,8 @@ func main() {
 	}
 
 	ctx := context.Background()
-	// Create spamc client instance
-	c, err = spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
+	// Create spamdclient client instance
+	c, err = spamdclient.NewClient(network, address, cfg.User, cfg.UseCompression)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -403,10 +403,7 @@ func parseAddr(a string, p int) (s string) {
 	return
 }
 
-// func check(c *spamc.Client, m []byte) (succeeded bool, code response.StatusCode) {
-// }
-
-func tell(ctx context.Context, c *spamc.Client, m io.Reader) (succeeded bool, code response.StatusCode) {
+func tell(ctx context.Context, c *spamdclient.Client, m io.Reader) (succeeded bool, code response.StatusCode) {
 	var err error
 	var h string
 	var l request.MsgType

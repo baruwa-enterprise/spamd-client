@@ -11,7 +11,7 @@ Golang SpamAssassin Client Library and Commandline tool
 ## Description
 
 spamd-client is a Golang library and cmdline tool that implements the
-SPAMC/SPAMD client protocol used by SpamAssassin.
+SPAMD client protocol used by SpamAssassin.
 
 ## Requirements
 

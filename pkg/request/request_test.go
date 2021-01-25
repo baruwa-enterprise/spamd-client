@@ -4,8 +4,8 @@
 // You can obtain one at http://mozilla.org/MPL/2.0/.
 
 /*
-Package request Golang Spamc SpamAssassin Client
-Spamc - Golang Spamc SpamAssassin Client
+Package request Golang Spamd SpamAssassin Client
+spamd-client - Golang Spamd SpamAssassin Client
 */
 package request
 

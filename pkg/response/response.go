@@ -4,8 +4,8 @@
 // You can obtain one at http://mozilla.org/MPL/2.0/.
 
 /*
-Package response Golang Spamc SpamAssassin Client
-Spamc - Golang Spamc SpamAssassin Client
+Package response Golang Spamd SpamAssassin Client
+spamd-client - Golang Spamd SpamAssassin Client
 */
 package response
 
@@ -135,7 +135,7 @@ func (s StatusCode) IsTemp() (r bool) {
 	return
 }
 
-// A Response represents a server response from a Spamc server.
+// A Response represents a server response from a Spamd server.
 type Response struct {
 	RequestMethod request.Method
 	StatusCode    StatusCode
@@ -159,7 +159,7 @@ func NewResponse(m request.Method) *Response {
 	}
 }
 
-// A Msg represents a message response from a Spamc server.
+// A Msg represents a message response from a Spamd server.
 type Msg struct {
 	Header textproto.MIMEHeader
 	Body   []byte

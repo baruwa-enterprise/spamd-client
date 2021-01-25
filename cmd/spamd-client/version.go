@@ -5,7 +5,7 @@
 
 /*
 Package main
-Spamc - Golang Spamc SpamAssassin Client
+spamd-client - Golang Spamd SpamAssassin Client
 */
 package main
 
