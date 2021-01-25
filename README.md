@@ -15,7 +15,7 @@ SPAMC/SPAMD client protocol used by SpamAssassin.
 
 ## Requirements
 
-* Golang 1.10.x or higher
+* Golang 1.15.x or higher
 * Pflag - github.com/spf13/pflag
 
 ## Getting started
