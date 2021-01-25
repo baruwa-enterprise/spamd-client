@@ -192,6 +192,10 @@ func main() {
 	flag.CommandLine.SortFlags = false
 	flag.Parse()
 	// msg cleared when in ping action
+	if cfg.Version {
+		fmt.Fprintf(os.Stdout, "SpamAssassin Client version %s SPAMC/%s\n", Version, spamdclient.ClientVersion)
+		os.Exit(0)
+	}
 
 	if cfg.User == "current user" {
 		u, err = user.LookupId(strconv.Itoa(os.Geteuid()))
