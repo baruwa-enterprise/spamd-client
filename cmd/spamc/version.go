@@ -1,11 +1,11 @@
-// Copyright (C) 2018 Andrew Colin Kissa <andrew@datopdog.io>
+// Copyright (C) 2018-2021 Andrew Colin Kissa <andrew@datopdog.io>
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this file,
 // You can obtain one at http://mozilla.org/MPL/2.0/.
 
 /*
 Package main
-Spamc - Golang spamc client
+Spamc - Golang Spamc SpamAssassin Client
 */
 package main
 
@@ -14,7 +14,7 @@ package main
 var GitCommit string
 
 // Version is the main version number that is being run at the moment.
-const Version = "0.0.1"
+const Version = "2.0.0"
 
 // VersionPrerelease is a pre-release marker for the version.
 // If this is "" (empty string) then it means that it is a final release.

@@ -1,11 +1,11 @@
-// Copyright (C) 2018 Andrew Colin Kissa <andrew@datopdog.io>
+// Copyright (C) 2018-2021 Andrew Colin Kissa <andrew@datopdog.io>
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this file,
 // You can obtain one at http://mozilla.org/MPL/2.0/.
 
 /*
-Package spamc Golang spamc client
-Spamc - Golang spamc client
+Package spamc Golang Spamc SpamAssassin Client
+Spamc - Golang Spamc SpamAssassin Client
 */
 package spamc
 
