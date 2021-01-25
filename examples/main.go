@@ -21,6 +21,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -111,6 +112,7 @@ func main() {
 	flag.ErrHelp = errors.New("")
 	flag.CommandLine.SortFlags = false
 	flag.Parse()
+	ctx := context.Background()
 	network, address := parseAddr(cfg.Address, cfg.Port)
 	ch := make(chan bool)
 	m := []byte(`Date: Mon, 23 Jun 2015 11:40:36 -0400
@@ -145,7 +147,7 @@ My Workd
 			c.EnableTLS()
 		}
 		ir := bytes.NewReader(m)
-		r, e := c.Check(ir)
+		r, e := c.Check(ctx, ir)
 		if e != nil {
 			log.Println(e)
 			return
@@ -172,7 +174,7 @@ My Workd
 		}
 		c.EnableRawBody()
 		ir := bytes.NewReader(m)
-		r, e := c.Headers(ir)
+		r, e := c.Headers(context.Background(), ir)
 		if e != nil {
 			log.Println("ERROR:", e)
 			return
@@ -198,7 +200,7 @@ My Workd
 		}
 		c.EnableRawBody()
 		ir := bytes.NewReader(m)
-		r, e := c.Process(ir)
+		r, e := c.Process(ctx, ir)
 		if e != nil {
 			log.Println(e)
 			return
@@ -224,7 +226,7 @@ My Workd
 		}
 		c.EnableRawBody()
 		ir := bytes.NewReader(m)
-		r, e := c.Report(ir)
+		r, e := c.Report(ctx, ir)
 		if e != nil {
 			log.Println(e)
 			return
@@ -250,7 +252,7 @@ My Workd
 		}
 		c.EnableRawBody()
 		ir := bytes.NewReader(m)
-		r, e := c.ReportIfSpam(ir)
+		r, e := c.ReportIfSpam(ctx, ir)
 		if e != nil {
 			log.Println(e)
 			return
@@ -276,7 +278,7 @@ My Workd
 		}
 		c.EnableRawBody()
 		ir := bytes.NewReader(m)
-		r, e := c.Symbols(ir)
+		r, e := c.Symbols(ctx, ir)
 		if e != nil {
 			log.Println(e)
 			return
@@ -301,28 +303,28 @@ My Workd
 	// c.SetCmdTimeout(2 * time.Second)
 	// c.SetConnRetries(5)
 	ir := bytes.NewReader(m)
-	r, e := c.Tell(ir, request.Ham, request.LearnAction)
+	r, e := c.Tell(ctx, ir, request.Ham, request.LearnAction)
 	if e != nil {
 		log.Println(e)
 		return
 	}
 	d(r)
 	ir.Reset(m)
-	r, e = c.Tell(ir, request.Ham, request.ForgetAction)
+	r, e = c.Tell(ctx, ir, request.Ham, request.ForgetAction)
 	if e != nil {
 		log.Println(e)
 		return
 	}
 	d(r)
 	ir.Reset(m)
-	r, e = c.Tell(ir, request.Spam, request.LearnAction)
+	r, e = c.Tell(ctx, ir, request.Spam, request.LearnAction)
 	if e != nil {
 		log.Println(e)
 		return
 	}
 	d(r)
 	ir.Reset(m)
-	r, e = c.Tell(ir, request.Spam, request.ForgetAction)
+	r, e = c.Tell(ctx, ir, request.Spam, request.ForgetAction)
 	if e != nil {
 		log.Println(e)
 		return

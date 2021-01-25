@@ -12,6 +12,7 @@ package spamc
 import (
 	"bytes"
 	"compress/bzip2"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -286,6 +287,7 @@ func TestTLSVerification(t *testing.T) {
 
 func TestPing(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		c, e := NewClient(network, address, user, true)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
@@ -295,7 +297,7 @@ func TestPing(t *testing.T) {
 			c.EnableTLS()
 			c.EnableTLSVerification()
 		}
-		s, e := c.Ping()
+		s, e := c.Ping(ctx)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
 		}
@@ -309,6 +311,7 @@ func TestPing(t *testing.T) {
 
 func TestIOReader(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		c, e := NewClient(network, address, user, true)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
@@ -321,7 +324,7 @@ func TestIOReader(t *testing.T) {
 		}
 		defer f.Close()
 		ir = bzip2.NewReader(f)
-		_, e = c.Check(ir)
+		_, e = c.Check(ctx, ir)
 		if e == nil {
 			t.Fatal("An error should be returned")
 		}
@@ -335,6 +338,7 @@ func TestIOReader(t *testing.T) {
 
 func TestCheck(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		th := []HeaderCheck{
 			{"Content-Length", false},
 			{"Spam", true},
@@ -348,19 +352,19 @@ func TestCheck(t *testing.T) {
 			c.EnableTLS()
 			c.EnableTLSVerification()
 		}
-		check(t, c, th, 1, 0, 0, false)
-		check(t, c, th, 1, 0, 0, true)
+		check(ctx, t, c, th, 1, 0, 0, false)
+		check(ctx, t, c, th, 1, 0, 0, true)
 		if useTLS != "1" {
 			c.DisableCompression()
-			check(t, c, th, 1, 0, 0, false)
-			check(t, c, th, 1, 0, 0, true)
+			check(ctx, t, c, th, 1, 0, 0, false)
+			check(ctx, t, c, th, 1, 0, 0, true)
 		}
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
-func check(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
+func check(ctx context.Context, t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
 	var ir io.Reader
 	f, e := getFile(isspam)
 	if e != nil {
@@ -374,7 +378,7 @@ func check(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int
 			t.Fatalf("Unexpected error: %s", e)
 		}
 		//
-		r, e := c.Check(ir)
+		r, e := c.Check(ctx, ir)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
 		}
@@ -393,6 +397,7 @@ func check(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int
 
 func TestHeaders(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		th := []HeaderCheck{
 			{"Content-Length", true},
 			{"Spam", true},
@@ -406,14 +411,14 @@ func TestHeaders(t *testing.T) {
 			c.EnableTLS()
 			c.EnableTLSVerification()
 		}
-		headers(t, c, th, 2, 0, 0, false, true)
-		headers(t, c, th, 2, 0, 0, true, false)
+		headers(ctx, t, c, th, 2, 0, 0, false, true)
+		headers(ctx, t, c, th, 2, 0, 0, true, false)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
-func headers(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam, rawbody bool) {
+func headers(ctx context.Context, t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam, rawbody bool) {
 	var ir io.Reader
 	f, e := getFile(isspam)
 	if e != nil {
@@ -432,7 +437,7 @@ func headers(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen i
 		} else {
 			c.DisableRawBody()
 		}
-		r, e := c.Headers(ir)
+		r, e := c.Headers(ctx, ir)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
 		}
@@ -457,6 +462,7 @@ func headers(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen i
 
 func TestProcess(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		th := []HeaderCheck{
 			{"Content-Length", true},
 			{"Spam", true},
@@ -470,14 +476,14 @@ func TestProcess(t *testing.T) {
 			c.EnableTLS()
 			c.EnableTLSVerification()
 		}
-		process(t, c, th, 2, 0, 0, false)
-		process(t, c, th, 2, 0, 0, true)
+		process(ctx, t, c, th, 2, 0, 0, false)
+		process(ctx, t, c, th, 2, 0, 0, true)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
-func process(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
+func process(ctx context.Context, t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
 	var ir io.Reader
 	f, e := getFile(isspam)
 	if e != nil {
@@ -491,7 +497,7 @@ func process(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen i
 			t.Fatalf("Unexpected error: %s", e)
 		}
 		//
-		r, e := c.Process(ir)
+		r, e := c.Process(ctx, ir)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
 		}
@@ -516,6 +522,7 @@ func process(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen i
 
 func TestReport(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		th := []HeaderCheck{
 			{"Content-Length", true},
 			{"Spam", true},
@@ -529,14 +536,14 @@ func TestReport(t *testing.T) {
 			c.EnableTLS()
 			c.EnableTLSVerification()
 		}
-		report(t, c, th, 2, 0, 0, false, true)
-		report(t, c, th, 2, 0, 0, true, false)
+		report(ctx, t, c, th, 2, 0, 0, false, true)
+		report(ctx, t, c, th, 2, 0, 0, true, false)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
-func report(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam, rawbody bool) {
+func report(ctx context.Context, t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam, rawbody bool) {
 	ir, e := getFile(isspam)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
@@ -547,7 +554,7 @@ func report(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen in
 	} else {
 		c.DisableRawBody()
 	}
-	r, e := c.Report(ir)
+	r, e := c.Report(ctx, ir)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
@@ -571,6 +578,7 @@ func report(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen in
 
 func TestReportIfSpam(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		th := []HeaderCheck{
 			{"Content-Length", true},
 			{"Spam", true},
@@ -584,20 +592,20 @@ func TestReportIfSpam(t *testing.T) {
 			c.EnableTLS()
 			c.EnableTLSVerification()
 		}
-		reportifspam(t, c, th, 2, 0, 0, false)
-		reportifspam(t, c, th, 2, 0, 0, true)
+		reportifspam(ctx, t, c, th, 2, 0, 0, false)
+		reportifspam(ctx, t, c, th, 2, 0, 0, true)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
-func reportifspam(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
+func reportifspam(ctx context.Context, t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
 	ir, e := getFile(isspam)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
 	defer ir.Close()
-	r, e := c.ReportIfSpam(ir)
+	r, e := c.ReportIfSpam(ctx, ir)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
@@ -621,6 +629,7 @@ func reportifspam(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, rules
 
 func TestSymbols(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		th := []HeaderCheck{
 			{"Content-Length", true},
 			{"Spam", true},
@@ -634,14 +643,14 @@ func TestSymbols(t *testing.T) {
 			c.EnableTLS()
 			c.EnableTLSVerification()
 		}
-		symbols(t, c, th, 2, 0, 0, false, true)
-		symbols(t, c, th, 2, 0, 0, true, false)
+		symbols(ctx, t, c, th, 2, 0, 0, false, true)
+		symbols(ctx, t, c, th, 2, 0, 0, true, false)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
-func symbols(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam, rawbody bool) {
+func symbols(ctx context.Context, t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam, rawbody bool) {
 	var ir io.Reader
 	f, e := getFile(isspam)
 	if e != nil {
@@ -660,7 +669,7 @@ func symbols(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen i
 		} else {
 			c.DisableRawBody()
 		}
-		r, e := c.Symbols(ir)
+		r, e := c.Symbols(ctx, ir)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
 		}
@@ -685,6 +694,7 @@ func symbols(t *testing.T, c *Client, th []HeaderCheck, hlen, rawlen, ruleslen i
 
 func TestTellError(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		c, e := NewClient(network, address, user, true)
 		if e != nil {
 			t.Fatalf("Unexpected error: %s", e)
@@ -694,7 +704,7 @@ func TestTellError(t *testing.T) {
 			t.Fatalf("Unexpected error: %s", e)
 		}
 		defer ir.Close()
-		_, e = c.Tell(ir, request.MsgType(100), request.LearnAction)
+		_, e = c.Tell(ctx, ir, request.MsgType(100), request.LearnAction)
 		if e == nil {
 			t.Fatalf("An error should be returned")
 		}
@@ -708,6 +718,7 @@ func TestTellError(t *testing.T) {
 
 func TestTellHam(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		th := []HeaderCheck{
 			{"Content-Length", false},
 			{"Spam", false},
@@ -721,7 +732,7 @@ func TestTellHam(t *testing.T) {
 			c.EnableTLS()
 			c.EnableTLSVerification()
 		}
-		tell(t, c, request.Ham, request.LearnAction, th, 1, 0, 0, false)
+		tell(ctx, t, c, request.Ham, request.LearnAction, th, 1, 0, 0, false)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
@@ -729,6 +740,7 @@ func TestTellHam(t *testing.T) {
 
 func TestTellForgetHam(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		th := []HeaderCheck{
 			{"Content-Length", false},
 			{"Spam", false},
@@ -743,7 +755,7 @@ func TestTellForgetHam(t *testing.T) {
 			c.EnableTLS()
 			c.EnableTLSVerification()
 		}
-		tell(t, c, request.Ham, request.ForgetAction, th, 1, 0, 0, false)
+		tell(ctx, t, c, request.Ham, request.ForgetAction, th, 1, 0, 0, false)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
@@ -751,6 +763,7 @@ func TestTellForgetHam(t *testing.T) {
 
 func TestTellSpam(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		th := []HeaderCheck{
 			{"Content-Length", false},
 			{"Spam", false},
@@ -765,7 +778,7 @@ func TestTellSpam(t *testing.T) {
 			c.EnableTLS()
 			c.EnableTLSVerification()
 		}
-		tell(t, c, request.Spam, request.LearnAction, th, 1, 0, 0, false)
+		tell(ctx, t, c, request.Spam, request.LearnAction, th, 1, 0, 0, false)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
@@ -773,6 +786,7 @@ func TestTellSpam(t *testing.T) {
 
 func TestTellForgetSpam(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		th := []HeaderCheck{
 			{"Content-Length", false},
 			{"Spam", false},
@@ -787,7 +801,7 @@ func TestTellForgetSpam(t *testing.T) {
 			c.EnableTLS()
 			c.EnableTLSVerification()
 		}
-		tell(t, c, request.Spam, request.ForgetAction, th, 1, 0, 0, false)
+		tell(ctx, t, c, request.Spam, request.ForgetAction, th, 1, 0, 0, false)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
@@ -795,6 +809,7 @@ func TestTellForgetSpam(t *testing.T) {
 
 func TestLearnHam(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		th := []HeaderCheck{
 			{"Content-Length", false},
 			{"Spam", false},
@@ -808,7 +823,7 @@ func TestLearnHam(t *testing.T) {
 			c.EnableTLS()
 			c.EnableTLSVerification()
 		}
-		learn(t, c, request.Ham, th, 1, 0, 0, false)
+		learn(ctx, t, c, request.Ham, th, 1, 0, 0, false)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
@@ -816,6 +831,7 @@ func TestLearnHam(t *testing.T) {
 
 func TestLearnSpam(t *testing.T) {
 	if network != "" && address != "" {
+		ctx := context.Background()
 		th := []HeaderCheck{
 			{"Content-Length", false},
 			{"Spam", false},
@@ -829,19 +845,19 @@ func TestLearnSpam(t *testing.T) {
 			c.EnableTLS()
 			c.EnableTLSVerification()
 		}
-		learn(t, c, request.Spam, th, 2, 0, 0, true)
+		learn(ctx, t, c, request.Spam, th, 2, 0, 0, true)
 	} else {
 		t.Skip("skipping test; $SPAMD_NETWORK or $SPAMD_ADDRESS not set")
 	}
 }
 
-func learn(t *testing.T, c *Client, req request.MsgType, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
+func learn(ctx context.Context, t *testing.T, c *Client, req request.MsgType, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
 	ir, e := getFile(isspam)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
 	defer ir.Close()
-	r, e := c.Learn(ir, req)
+	r, e := c.Learn(ctx, ir, req)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
@@ -855,7 +871,7 @@ func learn(t *testing.T, c *Client, req request.MsgType, th []HeaderCheck, hlen,
 		t.Errorf("Got %d want %d", rlen, ruleslen)
 	}
 	ir.Seek(0, 0)
-	r, e = c.Revoke(ir)
+	r, e = c.Revoke(ctx, ir)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
@@ -863,13 +879,13 @@ func learn(t *testing.T, c *Client, req request.MsgType, th []HeaderCheck, hlen,
 	log(t, r)
 }
 
-func tell(t *testing.T, c *Client, req request.MsgType, act request.TellAction, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
+func tell(ctx context.Context, t *testing.T, c *Client, req request.MsgType, act request.TellAction, th []HeaderCheck, hlen, rawlen, ruleslen int, isspam bool) {
 	ir, e := getFile(isspam)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}
 	defer ir.Close()
-	r, e := c.Tell(ir, req, act)
+	r, e := c.Tell(ctx, ir, req, act)
 	if e != nil {
 		t.Fatalf("Unexpected error: %s", e)
 	}

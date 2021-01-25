@@ -1,6 +1,6 @@
 # spamc
 
-Golang Spamc Client
+Golang Spamc SpamAssassin Client
 
 [![Ci](https://github.com/baruwa-enterprise/spamc/workflows/Ci/badge.svg)](https://github.com/baruwa-enterprise/spamc/actions?query=workflow%3ACi)
 [![codecov](https://codecov.io/gh/baruwa-enterprise/spamc/branch/master/graph/badge.svg)](https://codecov.io/gh/baruwa-enterprise/spamc)

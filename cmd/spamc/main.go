@@ -11,6 +11,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -283,6 +284,7 @@ func main() {
 		log.Fatalf("The file is larger than max allowed")
 	}
 
+	ctx := context.Background()
 	// Create spamc client instance
 	c, err = spamc.NewClient(network, address, cfg.User, cfg.UseCompression)
 	if err != nil {
@@ -297,7 +299,7 @@ func main() {
 	for i := 0; i < cfg.FilterRetry; i++ {
 		success = false
 		if cfg.Check {
-			rs, err = c.Check(m)
+			rs, err = c.Check(ctx, m)
 			if err != nil {
 				code = response.ExSoftware
 			} else {
@@ -309,7 +311,7 @@ func main() {
 			}
 		} else if cfg.Tests {
 			c.EnableRawBody()
-			rs, err = c.Symbols(m)
+			rs, err = c.Symbols(ctx, m)
 			if err != nil {
 				code = response.ExSoftware
 			} else {
@@ -322,7 +324,7 @@ func main() {
 			c.DisableRawBody()
 		} else if cfg.ReportIfSpam {
 			c.EnableRawBody()
-			rs, err = c.ReportIfSpam(m)
+			rs, err = c.ReportIfSpam(ctx, m)
 			if err != nil {
 				code = response.ExSoftware
 			} else {
@@ -336,7 +338,7 @@ func main() {
 			c.DisableRawBody()
 		} else if cfg.Report {
 			c.EnableRawBody()
-			rs, err = c.Report(m)
+			rs, err = c.Report(ctx, m)
 			if err != nil {
 				code = response.ExSoftware
 			} else {
@@ -350,7 +352,7 @@ func main() {
 			c.DisableRawBody()
 		} else if cfg.HeadersOnly {
 			c.EnableRawBody()
-			rs, err = c.Headers(m)
+			rs, err = c.Headers(ctx, m)
 			if err != nil {
 				code = response.ExSoftware
 			} else {
@@ -373,7 +375,7 @@ func main() {
 			}
 			c.DisableRawBody()
 		} else if cfg.LearnType != "" || cfg.ReportType != "" {
-			success, code = tell(c, m)
+			success, code = tell(ctx, c, m)
 		}
 		// retcode = int(code)
 		if success && code == response.ExOK || !success && !code.IsTemp() {
@@ -404,7 +406,7 @@ func parseAddr(a string, p int) (s string) {
 // func check(c *spamc.Client, m []byte) (succeeded bool, code response.StatusCode) {
 // }
 
-func tell(c *spamc.Client, m io.Reader) (succeeded bool, code response.StatusCode) {
+func tell(ctx context.Context, c *spamc.Client, m io.Reader) (succeeded bool, code response.StatusCode) {
 	var err error
 	var h string
 	var l request.MsgType
@@ -433,7 +435,7 @@ func tell(c *spamc.Client, m io.Reader) (succeeded bool, code response.StatusCod
 			l = request.Ham
 			a = request.RevokeAction
 		}
-		r, err = c.Tell(m, l, a)
+		r, err = c.Tell(ctx, m, l, a)
 		if err != nil {
 			code = response.ExSoftware
 			return

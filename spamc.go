@@ -13,6 +13,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/zlib"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -186,23 +187,23 @@ func (c *Client) SetConnSleep(s time.Duration) {
 }
 
 // Check requests the SPAMD service to check a message with a CHECK request.
-func (c *Client) Check(r io.Reader) (rs *response.Response, err error) {
-	rs, err = c.cmd(request.Check, request.NoAction, request.NoneType, r)
+func (c *Client) Check(ctx context.Context, r io.Reader) (rs *response.Response, err error) {
+	rs, err = c.cmd(ctx, request.Check, request.NoAction, request.NoneType, r)
 	return
 }
 
 // Headers requests the SPAMD service to check a message with a
 // HEADERS request.
-func (c *Client) Headers(r io.Reader) (rs *response.Response, err error) {
-	rs, err = c.cmd(request.Headers, request.NoAction, request.NoneType, r)
+func (c *Client) Headers(ctx context.Context, r io.Reader) (rs *response.Response, err error) {
+	rs, err = c.cmd(ctx, request.Headers, request.NoAction, request.NoneType, r)
 	return
 }
 
 // Ping sends a ping request to the SPAMD service and will receive
 // a response if the service is alive.
-func (c *Client) Ping() (s bool, err error) {
+func (c *Client) Ping(ctx context.Context) (s bool, err error) {
 	var rs *response.Response
-	rs, err = c.cmd(request.Ping, request.NoAction, request.NoneType, nil)
+	rs, err = c.cmd(ctx, request.Ping, request.NoAction, request.NoneType, nil)
 	if err == nil {
 		s = rs.StatusCode == response.ExOK
 	}
@@ -211,51 +212,51 @@ func (c *Client) Ping() (s bool, err error) {
 
 // Process requests the SPAMD service to check a message with a
 // PROCESS request.
-func (c *Client) Process(r io.Reader) (rs *response.Response, err error) {
-	rs, err = c.cmd(request.Process, request.NoAction, request.NoneType, r)
+func (c *Client) Process(ctx context.Context, r io.Reader) (rs *response.Response, err error) {
+	rs, err = c.cmd(ctx, request.Process, request.NoAction, request.NoneType, r)
 	return
 }
 
 // Report requests the SPAMD service to check a message with a
 // REPORT request.
-func (c *Client) Report(r io.Reader) (rs *response.Response, err error) {
-	rs, err = c.cmd(request.Report, request.NoAction, request.NoneType, r)
+func (c *Client) Report(ctx context.Context, r io.Reader) (rs *response.Response, err error) {
+	rs, err = c.cmd(ctx, request.Report, request.NoAction, request.NoneType, r)
 	return
 }
 
 // ReportIfSpam requests the SPAMD service to check a message with a
 // REPORT_IFSPAM request.
-func (c *Client) ReportIfSpam(r io.Reader) (rs *response.Response, err error) {
-	rs, err = c.cmd(request.ReportIfSpam, request.NoAction, request.NoneType, r)
+func (c *Client) ReportIfSpam(ctx context.Context, r io.Reader) (rs *response.Response, err error) {
+	rs, err = c.cmd(ctx, request.ReportIfSpam, request.NoAction, request.NoneType, r)
 	return
 }
 
 // Symbols requests the SPAMD service to check a message with a
 // SYMBOLS request.
-func (c *Client) Symbols(r io.Reader) (rs *response.Response, err error) {
-	rs, err = c.cmd(request.Symbols, request.NoAction, request.NoneType, r)
+func (c *Client) Symbols(ctx context.Context, r io.Reader) (rs *response.Response, err error) {
+	rs, err = c.cmd(ctx, request.Symbols, request.NoAction, request.NoneType, r)
 	return
 }
 
 // Tell instructs the SPAMD service to to mark the message
-func (c *Client) Tell(r io.Reader, l request.MsgType, a request.TellAction) (rs *response.Response, err error) {
+func (c *Client) Tell(ctx context.Context, r io.Reader, l request.MsgType, a request.TellAction) (rs *response.Response, err error) {
 	if l < request.Ham || l > request.Spam {
 		err = fmt.Errorf(invalidLearnTypeErr)
 		return
 	}
-	rs, err = c.cmd(request.Tell, a, l, r)
+	rs, err = c.cmd(ctx, request.Tell, a, l, r)
 	return
 }
 
 // Learn instructs the SPAMD service to learn tokens from a message
-func (c *Client) Learn(r io.Reader, l request.MsgType) (rs *response.Response, err error) {
-	rs, err = c.Tell(r, l, request.LearnAction)
+func (c *Client) Learn(ctx context.Context, r io.Reader, l request.MsgType) (rs *response.Response, err error) {
+	rs, err = c.Tell(ctx, r, l, request.LearnAction)
 	return
 }
 
 // Revoke instructs the SPAMD service to revoke tokens from a message
-func (c *Client) Revoke(r io.Reader) (rs *response.Response, err error) {
-	rs, err = c.Tell(r, request.Ham, request.RevokeAction)
+func (c *Client) Revoke(ctx context.Context, r io.Reader) (rs *response.Response, err error) {
+	rs, err = c.Tell(ctx, r, request.Ham, request.RevokeAction)
 	return
 }
 
@@ -285,13 +286,13 @@ func (c *Client) tlsConfig() (conf *tls.Config) {
 	return
 }
 
-func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType, r io.Reader) (rs *response.Response, err error) {
+func (c *Client) cmd(ctx context.Context, rq request.Method, a request.TellAction, l request.MsgType, r io.Reader) (rs *response.Response, err error) {
 	var line string
 	var conn net.Conn
 	var tc *textproto.Conn
 
 	// Setup the socket connection
-	if conn, err = c.dial(); err != nil {
+	if conn, err = c.dial(ctx); err != nil {
 		return
 	}
 
@@ -458,7 +459,7 @@ func (c *Client) cmd(rq request.Method, a request.TellAction, l request.MsgType,
 	return
 }
 
-func (c *Client) dial() (conn net.Conn, err error) {
+func (c *Client) dial(ctx context.Context) (conn net.Conn, err error) {
 	d := &net.Dialer{}
 
 	if c.connTimeout > 0 {
@@ -468,9 +469,13 @@ func (c *Client) dial() (conn net.Conn, err error) {
 	for i := 0; i <= c.connRetries; i++ {
 		if c.useTLS && strings.HasPrefix(c.network, "tcp") {
 			conf := c.tlsConfig()
-			conn, err = tls.DialWithDialer(d, c.network, c.address, conf)
+			td := tls.Dialer{
+				NetDialer: d,
+				Config:    conf,
+			}
+			conn, err = td.DialContext(ctx, c.network, c.address)
 		} else {
-			conn, err = d.Dial(c.network, c.address)
+			conn, err = d.DialContext(ctx, c.network, c.address)
 		}
 		if e, ok := err.(net.Error); ok && e.Timeout() {
 			time.Sleep(c.connSleep)
