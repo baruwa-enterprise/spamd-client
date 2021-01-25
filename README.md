@@ -5,7 +5,7 @@ Golang Spamc SpamAssassin Client
 [![Ci](https://github.com/baruwa-enterprise/spamc/workflows/Ci/badge.svg)](https://github.com/baruwa-enterprise/spamc/actions?query=workflow%3ACi)
 [![codecov](https://codecov.io/gh/baruwa-enterprise/spamc/branch/master/graph/badge.svg)](https://codecov.io/gh/baruwa-enterprise/spamc)
 [![Go Report Card](https://goreportcard.com/badge/github.com/baruwa-enterprise/spamc)](https://goreportcard.com/report/github.com/baruwa-enterprise/spamc)
-[![GoDoc](https://pkg.go.dev/github.com/baruwa-enterprise/spamc?status.svg)](https://pkg.go.dev/github.com/baruwa-enterprise/spamc)
+[![Go Reference](https://pkg.go.dev/badge/github.com/baruwa-enterprise/spamc.svg)](https://pkg.go.dev/github.com/baruwa-enterprise/spamc)
 [![MPLv2 License](https://img.shields.io/badge/license-MPLv2-blue.svg?style=flat-square)](https://www.mozilla.org/MPL/2.0/)
 
 ## Description
