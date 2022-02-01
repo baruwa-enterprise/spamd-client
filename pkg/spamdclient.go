@@ -292,6 +292,10 @@ func (c *Client) tlsConfig() (conf *tls.Config) {
 	return
 }
 
+type readerWithLen interface {
+	Len() int
+}
+
 func (c *Client) cmd(ctx context.Context, rq request.Method, a request.TellAction, l request.MsgType, r io.Reader) (rs *response.Response, err error) {
 	var line string
 	var conn net.Conn
@@ -320,11 +324,7 @@ func (c *Client) cmd(ctx context.Context, rq request.Method, a request.TellActio
 		var clen int64
 		var stat os.FileInfo
 		switch v := r.(type) {
-		case *bytes.Buffer:
-			clen = int64(v.Len())
-		case *bytes.Reader:
-			clen = int64(v.Len())
-		case *strings.Reader:
+		case readerWithLen:
 			clen = int64(v.Len())
 		case *os.File:
 			if stat, err = v.Stat(); err != nil {
